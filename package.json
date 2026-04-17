@@ -1,0 +1,51 @@
+{
+  "name": "lark-docx2md",
+  "version": "0.1.0",
+  "description": "Convert Lark/Feishu documents to Markdown",
+  "type": "module",
+  "main": "./dist/cli.js",
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "bin": {
+    "larkDocx2md": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsx src/cli.ts",
+    "prepack": "pnpm build"
+  },
+  "keywords": [
+    "lark",
+    "feishu",
+    "markdown",
+    "converter"
+  ],
+  "author": "byte",
+  "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Byte-n/larkDocx2md.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Byte-n/larkDocx2md/issues"
+  },
+  "homepage": "https://github.com/Byte-n/larkDocx2md#readme",
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@10.30.1",
+  "dependencies": {
+    "@larksuiteoapi/node-sdk": "^1.60.0",
+    "commander": "^14.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.2",
+    "ts-node": "^10.9.2",
+    "tsdown": "^0.12.9",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.2"
+  }
+}

@@ -1,0 +1,9 @@
+.idea/
+node_modules/
+dist/
+larkDocx2mdOutput/
+.DS_Store
+*.log
+*.tgz
+.env
+.env.*

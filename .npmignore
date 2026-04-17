@@ -1,0 +1,20 @@
+# Workspace and package manager artifacts
+node_modules/
+pnpm-lock.yaml
+pnpm-workspace.yaml
+
+# Source and local outputs
+src/
+larkDocx2mdOutput/
+
+# Build/config files not needed by package consumers
+tsconfig.json
+tsdown.config.ts
+
+# IDE and local environment files
+.idea/
+.claude/
+.DS_Store
+.env
+.env.*
+*.log

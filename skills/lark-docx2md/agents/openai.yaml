@@ -1,0 +1,4 @@
+interface:
+  display_name: "lark-docx2md"
+  short_description: "Guide Feishu wiki download via lark-docx2md CLI"
+  default_prompt: "Use this skill when you need to run npx -y lark-docx2md download for a Feishu wiki URL and produce Markdown output."

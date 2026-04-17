@@ -11,7 +11,7 @@
 > 命令所需权限见下 ‘飞书自创应用需要的权限’
 
 ```bash
-npx -y lark-docx2md download https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
+npx -y lark-docx2md@latest download https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
 ```
 
 或先设置环境变量（命令行参数可省略）：
@@ -19,7 +19,7 @@ npx -y lark-docx2md download https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --a
 ```bash
 export LARK_DOCX2MD_APP_ID=<APP_ID>
 export LARK_DOCX2MD_APP_SECRET=<APP_SECRET>
-npx -y lark-docx2md download <url>
+npx -y lark-docx2md@latest download <url>
 ```
 
 | 参数                    | 说明                                                        |

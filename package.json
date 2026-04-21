@@ -1,9 +1,9 @@
 {
   "name": "lark-docx2md",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Convert Lark/Feishu documents to Markdown",
   "type": "module",
-  "main": "./dist/cli.js",
+  "main": "./dist/converter.js",
   "files": [
     "dist",
     "README.md",

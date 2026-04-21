@@ -22,20 +22,34 @@ export LARK_DOCX2MD_APP_SECRET=<APP_SECRET>
 npx -y lark-docx2md@latest download <url>
 ```
 
-| 参数                    | 说明                                                        |
-|-----------------------|-----------------------------------------------------------|
-| `<url>`               | 飞书文档链接                                                    |
-| `--app-id`            | 飞书应用 App ID（可选；默认读取 `LARK_DOCX2MD_APP_ID`）                |
-| `--app-secret`        | 飞书应用 App Secret（可选；默认读取 `LARK_DOCX2MD_APP_SECRET`）        |
-| `-o, --output <dir>`  | 输出目录（默认：`./larkDocx2mdOutput`）                            |
-| `--agent`             | Agent 模式：日志等级为 ERROR，image-mod 为 `online`，Markdown 输出到标准流 |
-| `--image-mode <mode>` | 图片处理模式：`local`（下载到本地，默认）或 `online`（使用 24h 临时在线链接）         |
+| 参数                       | 说明                                        | 环境变量                         | 默认值                   |
+|--------------------------|-------------------------------------------|------------------------------|-----------------------|
+| `<url>`                  | 飞书文档链接（`https://*.feishu.cn/wiki/*`）      | —                            | —                     |
+| `--app-id <id>`          | 飞书应用 App ID                               | `LARK_DOCX2MD_APP_ID`        | —                     |
+| `--app-secret <secret>`  | 飞书应用 App Secret                           | `LARK_DOCX2MD_APP_SECRET`    | —                     |
+| `-o, --output <dir>`     | 输出目录                                      | `LARK_DOCX2MD_OUTPUT`        | `./larkDocx2mdOutput` |
+| `--agent`                | Agent 模式：日志 ERROR，Markdown 输出到 stdout     | `LARK_DOCX2MD_AGENT=true`    | `false`               |
+| `--image-mode <mode>`    | 图片处理模式：`local`（下载到本地）或 `online`（24h 临时链接） | `LARK_DOCX2MD_IMAGE_MODE`    | `local`               |
+| `--wb-format <format>`   | 画板输出格式：`base64`、`inline-svg`、`svg`、`yaml` | `LARK_DOCX2MD_WB_FORMAT`     | `svg`                 |
+| `--wb-bg <style>`        | 画板 SVG 背景：`none`、`dot` 或颜色值如 `#fff`       | `LARK_DOCX2MD_WB_BG`         | `none`                |
+| `--wb-image-mode <mode>` | 画板图片模式：`online`、`base64` 或 `local`        | `LARK_DOCX2MD_WB_IMAGE_MODE` | `local`               |
+
+> **参数联动规则**
+>
+> - `--agent` 开启时：`--image-mode` 强制为 `online`，`--wb-image-mode` 强制为 `online`，`--wb-format` 默认为 `yaml`（仅允许
+    `inline-svg` / `yaml`）。
+> - `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
+
+
+**`--agent` 开启时，飞书文档转换后的内容会直接通过标准流输出**
 
 ## 功能
 
 - 支持飞书 Wiki 文档下载
 - 转换 20+ 种块类型
 - 输出标准 Markdown 文件
+- 支持飞书画板，输出格式：`base64`（data URI 内嵌）、`inline-svg`（SVG 标签内嵌）、`svg`（独立文件）、`yaml`（AI
+  友好结构化数据）。详见 [画板支持说明](./WHITEBOARD.md)
 
 ### 支持的内容块类型
 
@@ -71,7 +85,7 @@ npx -y lark-docx2md@latest download <url>
 | @用户  | 用户 ID       |
 | @文档  | `[标题](url)` |
 
-> 未支持的块类型（如文件附件、视频、内嵌表格、画板等）会被静默忽略。
+> 未支持的块类型（如文件附件、视频、内嵌表格等）会被静默忽略。
 
 ## 开发
 
@@ -94,14 +108,19 @@ pnpm build
 {
   "scopes": {
     "tenant": [
+      "base:app:read",
+      "bitable:app",
+      "bitable:app:readonly",
+      "board:whiteboard:node:read",
+      "contact:user.employee_id:readonly",
       "docs:document.media:download",
+      "docx:document",
       "docx:document:readonly",
-      "wiki:node:read"
+      "wiki:node:read",
+      "wiki:wiki",
+      "wiki:wiki:readonly"
     ],
-    "user": [
-      "docx:document:readonly",
-      "wiki:node:read"
-    ]
+    "user": []
   }
 }
 ```

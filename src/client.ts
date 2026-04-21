@@ -2,18 +2,7 @@ import * as lark from '@larksuiteoapi/node-sdk';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-
-export type DocxBlock = NonNullable<NonNullable<
-  Awaited<ReturnType<lark.Client['docx']['v1']['documentBlock']['list']>>['data']
->['items']>[number];
-
-export type TextBody = NonNullable<DocxBlock['text']>;
-export type TextElement = TextBody['elements'][number];
-
-export interface DocInfo {
-  documentId: string;
-  title: string;
-}
+import type { DocInfo, DocxBlock, WhiteboardNode } from './types.js';
 
 export function createClient (appId: string, appSecret: string, loggerLevel: LoggerLevel = LoggerLevel.warn) {
   const client = new lark.Client({ appId, appSecret, loggerLevel });
@@ -102,7 +91,31 @@ export function createClient (appId: string, appSecret: string, loggerLevel: Log
     }
   }
 
-  return { getWikiNodeInfo, getDocxDocument, getDocxBlocks, downloadImage, batchGetTmpDownloadUrl };
+  async function getWhiteboardNodes (whiteboardId: string): Promise<WhiteboardNode[]> {
+    const data = await call('getWhiteboardNodes', () =>
+      client.board.v1.whiteboardNode.list({ path: { whiteboard_id: whiteboardId } }),
+    );
+    return data.nodes ?? [];
+  }
+
+  async function downloadWhiteboardAsImage (whiteboardId: string, outDir: string): Promise<any> {
+    const resp = await client.board.v1.whiteboard.downloadAsImage({
+        path: {
+          whiteboard_id: whiteboardId,
+        },
+      },
+    );
+    fs.mkdirSync(outDir, { recursive: true });
+    const ext = (resp.headers?.['content-type'] as string)?.includes('png') ? '.png' : '.jpg';
+    const filename = path.join(outDir, `${whiteboardId}${ext}`);
+    await resp.writeFile(filename);
+    return filename;
+  }
+
+  return {
+    getWikiNodeInfo, getDocxDocument, getDocxBlocks, downloadImage, batchGetTmpDownloadUrl, getWhiteboardNodes,
+    downloadWhiteboardAsImage,
+  };
 }
 
 export type LarkClient = ReturnType<typeof createClient>;

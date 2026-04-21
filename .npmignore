@@ -18,3 +18,7 @@ tsdown.config.ts
 .env
 .env.*
 *.log
+
+# idea
+.qoder
+.agents

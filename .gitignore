@@ -7,3 +7,7 @@ larkDocx2mdOutput/
 *.tgz
 .env
 .env.*
+
+# idea
+.qoder
+.agents

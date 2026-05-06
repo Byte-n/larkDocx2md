@@ -252,7 +252,9 @@ const sheetResolvedSerializer: NodeSerializer = {
     if (node.type !== 'sheetResolved') return '';
     let out = '';
     for (const s of node.sheets) {
-      out += `## 工作表：${s.title}\n\n`;
+      if (node.showTitle) {
+        out += `## ${node.title}-${s.title}\n\n`;
+      }
       if (s.error) { out += `> ${s.error}\n\n`; continue; }
       if (!s.rows.length) { out += '_（空表）_\n\n'; continue; }
       const [head, ...body] = s.rows;

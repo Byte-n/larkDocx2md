@@ -6,20 +6,26 @@ import { whiteboardNodesToSvg } from '../whiteboard/index.js';
 import { whiteboardNodesToYaml } from '../whiteboard/yaml/index.js';
 import { filterNodes } from '../whiteboard/utils.js';
 import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter } from '../sheet/index.js';
+import type { ResolvedSheet } from '../sheet/index.js';
 import { createLogger } from '../logger.js';
 import type { MdBlockNode } from './types.js';
 
 const logger = createLogger('transformer');
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export type DocSourceType = 'docx' | 'sheet';
+
 export class MdTransformer {
-  constructor (private client: LarkClient, private opts: ConvertOptions) {
-  }
+  constructor (
+    private client: LarkClient,
+    private opts: ConvertOptions,
+    private sourceType: DocSourceType = 'docx',
+  ) {}
 
   async transform (ast: MdBlockNode): Promise<void> {
     // 1. Collect tokens
-    const imageTokens = collectImageTokens(ast);
-    const whiteboardTokens = collectWhiteboardTokens(ast);
-    const sheetTokens = collectSheetTokens(ast);
+    const { imageTokens, whiteboardTokens, sheetRefs } = collectTokens(ast);
 
     // 2. Resolve images
     const imageMap = await this.resolveImages(imageTokens);
@@ -28,7 +34,7 @@ export class MdTransformer {
     const whiteboardMap = await this.resolveWhiteboards(whiteboardTokens);
 
     // 4. Resolve sheets
-    const sheetMap = await this.resolveSheets(sheetTokens);
+    const sheetMap = await this.resolveSheets(sheetRefs);
 
     // 5. Replace in AST
     replaceInAst(ast, imageMap, whiteboardMap, sheetMap);
@@ -229,53 +235,63 @@ export class MdTransformer {
 
   // ─── Sheet Resolution ─────────────────────────────────────────────────────────
 
-  private async resolveSheets (tokens: string[]): Promise<Map<string, MdBlockNode>> {
+  private async resolveSheets (refs: SheetRef[]): Promise<Map<string, MdBlockNode>> {
     const map = new Map<string, MdBlockNode>();
-    const uniqueTokens = [...new Set(tokens)];
-    if (uniqueTokens.length === 0) return map;
+    const uniqueRefs = refs.filter((r, i, arr) => arr.findIndex(x => x.raw === r.raw) === i);
+    if (uniqueRefs.length === 0) return map;
 
-    for (const token of uniqueTokens) {
-      if (!token) continue;
+    for (const { raw, spreadsheetToken, sheetId } of uniqueRefs) {
+      if (!spreadsheetToken) continue;
       try {
-        const info = await this.client.getSpreadsheetInfo(token);
-        const list = await this.client.listSheets(token);
-        const resolved: import('../sheet/index.js').ResolvedSheet[] = [];
+      const info = await this.client.getSpreadsheetInfo(spreadsheetToken);
+      const list = await this.client.listSheets(spreadsheetToken);
+      const sheetsToProcess = this.sourceType === 'sheet'
+        ? list
+        : list.filter(s => s.sheet_id === sheetId);
+      const resolved: ResolvedSheet[] = [];
 
-        for (const s of list) {
-          if (s.hidden) continue;
-          if (s.resource_type && s.resource_type !== 'sheet') {
-            resolved.push({
-              title: s.title ?? '', kind: 'bitable', rows: [],
-              error: `非网格表(${s.resource_type})，已跳过`,
-            });
+      for (const s of sheetsToProcess) {
+        if (s.hidden) continue;
+        if (s.resource_type && s.resource_type !== 'sheet') {
+          resolved.push({
+            title: s.title ?? '', kind: 'bitable', rows: [],
+            error: `非网格表(${s.resource_type})，已跳过`,
+          });
+          continue;
+        }
+        try {
+          const meta = await this.client.getSheetMeta(spreadsheetToken, s.sheet_id!);
+          const { row_count = 0, column_count = 0 } = meta.grid_properties ?? {};
+          if (!row_count || !column_count) {
+            resolved.push({ title: s.title ?? '', kind: 'grid', rows: [] });
             continue;
           }
-          try {
-            const meta = await this.client.getSheetMeta(token, s.sheet_id!);
-            const { row_count = 0, column_count = 0 } = meta.grid_properties ?? {};
-            if (!row_count || !column_count) {
-              resolved.push({ title: s.title ?? '', kind: 'grid', rows: [] });
-              continue;
-            }
-            const endCol = columnIndexToLetter(column_count);
-            const raw = await this.client.readSheetValues(
-              token, `${s.sheet_id}!A1:${endCol}${row_count}`,
-            );
-            const flat = (raw ?? []).map((row: any[]) => row.map(cellToMd));
-            const expanded = expandMerges(flat, meta.merges ?? []);
-            const trimmed = trimTrailingEmpty(expanded);
-            resolved.push({ title: s.title ?? '', kind: 'grid', rows: trimmed });
-          } catch (e: any) {
-            resolved.push({
-              title: s.title ?? '', kind: 'grid', rows: [],
-              error: `读取失败：${e.message}`,
-            });
-          }
+          const endCol = columnIndexToLetter(column_count);
+          const values = await this.client.readSheetValues(
+            spreadsheetToken, `${s.sheet_id}!A1:${endCol}${row_count}`,
+          );
+          const flat = (values ?? []).map((row: any[]) => row.map(cellToMd));
+          const expanded = expandMerges(flat, meta.merges ?? []);
+          const trimmed = trimTrailingEmpty(expanded);
+          resolved.push({ title: s.title ?? '', kind: 'grid', rows: trimmed });
+        } catch (e: any) {
+          resolved.push({
+            title: s.title ?? '', kind: 'grid', rows: [],
+            error: `读取失败：${e.message}`,
+          });
+        } finally {
+          await sleep(600);
         }
-        map.set(token, { type: 'sheetResolved', title: info.title ?? '', sheets: resolved });
+      }
+      map.set(raw, {
+        type: 'sheetResolved',
+        title: info.title ?? '',
+        sheets: resolved,
+        showTitle: this.sourceType === 'sheet',
+      });
       } catch (e: any) {
-        logger.warn(`Failed to render sheet ${token}:`, e.message);
-        map.set(token, { type: 'sheetResolved', title: '', sheets: [] } as any);
+        logger.warn(`Failed to resolve sheet ${raw}:`, e.message);
+        map.set(raw, { type: 'sheetResolved', title: '', sheets: [], showTitle: false });
       }
     }
     return map;
@@ -284,34 +300,38 @@ export class MdTransformer {
 
 // ─── AST Traversal Utilities ─────────────────────────────────────────────────
 
-function collectImageTokens (node: MdBlockNode): string[] {
-  const tokens: string[] = [];
-  traverseBlockAst(node, n => {
-    if (n.type === 'image') {
-      tokens.push(n.src);
-    }
-  });
-  return tokens;
+interface SheetRef {
+  /** 原始 token（SpreadsheetToken_SheetID），用于 AST 匹配 */
+  raw: string;
+  /** 电子表格 token */
+  spreadsheetToken: string;
+  /** 工作表 ID（可选） */
+  sheetId?: string;
 }
 
-function collectWhiteboardTokens (node: MdBlockNode): string[] {
-  const tokens: string[] = [];
+function collectTokens (node: MdBlockNode) {
+  const imageTokens: string[] = [];
+  const whiteboardTokens: string[] = [];
+  const sheetRefs: SheetRef[] = [];
   traverseBlockAst(node, n => {
-    if (n.type === 'whiteboard') {
-      tokens.push(n.token);
+    switch (n.type) {
+      case 'image':
+        imageTokens.push(n.src);
+        break;
+      case 'whiteboard':
+        whiteboardTokens.push(n.token);
+        break;
+      case 'sheet': {
+        // token 格式为 SpreadsheetToken_SheetID，以最后一个下划线拆分
+        const lastIdx = n.token.lastIndexOf('_');
+        const spreadsheetToken = lastIdx > 0 ? n.token.slice(0, lastIdx) : n.token;
+        const sheetId = lastIdx > 0 ? n.token.slice(lastIdx + 1) : undefined;
+        sheetRefs.push({ raw: n.token, spreadsheetToken, sheetId });
+        break;
+      }
     }
   });
-  return tokens;
-}
-
-function collectSheetTokens (node: MdBlockNode): string[] {
-  const tokens: string[] = [];
-  traverseBlockAst(node, n => {
-    if (n.type === 'sheet') {
-      tokens.push(n.token);
-    }
-  });
-  return tokens;
+  return { imageTokens, whiteboardTokens, sheetRefs };
 }
 
 function replaceInAst (

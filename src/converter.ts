@@ -63,7 +63,7 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   }
 
   // 异步后处理
-  const transformer = new MdTransformer(client, opts);
+  const transformer = new MdTransformer(client, opts, objType === 'sheet' ? 'sheet' : 'docx');
   await transformer.transform(ast);
 
   // 序列化为 markdown

@@ -100,28 +100,32 @@ function parseElement (e: TextElement, inline: boolean): MdInlineNode[] {
 
 function parseTextRun (tr: NonNullable<TextElement['text_run']>): MdInlineNode {
   const s = tr.text_element_style;
-  const textNode: MdInlineNode = { type: 'text', content: tr.content };
 
-  if (!s) return textNode;
+  // 基础节点：inline_code 作为叶子节点替代 text，其他样式在其外层逐层包裹
+  let node: MdInlineNode = s?.inline_code
+    ? { type: 'inlineCode', content: tr.content }
+    : { type: 'text', content: tr.content };
 
-  if (s.bold) {
-    return { type: 'bold', children: [textNode] };
-  }
-  if (s.italic) {
-    return { type: 'italic', children: [textNode] };
-  }
-  if (s.strikethrough) {
-    return { type: 'strikethrough', children: [textNode] };
+  if (!s) return node;
+
+  // 自内向外逐层包裹，以支持多样式叠加（例如：粗斜体、粗体链接、带下划线的删除线等）
+  // 包裹顺序：link → underline → strikethrough → italic → bold
+  // bold 放在最外层以兼容更多 Markdown 渲染器的嵌套解析
+  if (s.link) {
+    node = { type: 'link', url: decodeURIComponent(s.link.url), children: [node] };
   }
   if (s.underline) {
-    return { type: 'underline', children: [textNode] };
+    node = { type: 'underline', children: [node] };
   }
-  if (s.inline_code) {
-    return { type: 'inlineCode', content: tr.content };
+  if (s.strikethrough) {
+    node = { type: 'strikethrough', children: [node] };
   }
-  if (s.link) {
-    return { type: 'link', url: decodeURIComponent(s.link.url), children: [textNode] };
+  if (s.italic) {
+    node = { type: 'italic', children: [node] };
+  }
+  if (s.bold) {
+    node = { type: 'bold', children: [node] };
   }
 
-  return textNode;
+  return node;
 }

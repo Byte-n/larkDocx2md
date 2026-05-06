@@ -5,6 +5,7 @@ import type { ConvertOptions, WbImageMode } from '../types.js';
 import { whiteboardNodesToSvg } from '../whiteboard/index.js';
 import { whiteboardNodesToYaml } from '../whiteboard/yaml/index.js';
 import { filterNodes } from '../whiteboard/utils.js';
+import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter } from '../sheet/index.js';
 import { createLogger } from '../logger.js';
 import type { MdBlockNode } from './types.js';
 
@@ -18,6 +19,7 @@ export class MdTransformer {
     // 1. Collect tokens
     const imageTokens = collectImageTokens(ast);
     const whiteboardTokens = collectWhiteboardTokens(ast);
+    const sheetTokens = collectSheetTokens(ast);
 
     // 2. Resolve images
     const imageMap = await this.resolveImages(imageTokens);
@@ -25,8 +27,11 @@ export class MdTransformer {
     // 3. Resolve whiteboards
     const whiteboardMap = await this.resolveWhiteboards(whiteboardTokens);
 
-    // 4. Replace in AST
-    replaceInAst(ast, imageMap, whiteboardMap);
+    // 4. Resolve sheets
+    const sheetMap = await this.resolveSheets(sheetTokens);
+
+    // 5. Replace in AST
+    replaceInAst(ast, imageMap, whiteboardMap, sheetMap);
   }
 
   // ─── Image Resolution ──────────────────────────────────────────────────────
@@ -36,7 +41,7 @@ export class MdTransformer {
     const uniqueTokens = [...new Set(tokens)];
     if (uniqueTokens.length === 0) return map;
 
-    if (this.opts.imageMode === 'online' || this.opts.agent) {
+    if (this.opts.imageMode === 'online' || this.opts.agent === true) {
       for (let i = 0; i < uniqueTokens.length; i += 5) {
         const batch = uniqueTokens.slice(i, i + 5);
         const urlMap = await this.client.batchGetTmpDownloadUrl(batch);
@@ -221,6 +226,60 @@ export class MdTransformer {
     }
     return yamlContent;
   }
+
+  // ─── Sheet Resolution ─────────────────────────────────────────────────────────
+
+  private async resolveSheets (tokens: string[]): Promise<Map<string, MdBlockNode>> {
+    const map = new Map<string, MdBlockNode>();
+    const uniqueTokens = [...new Set(tokens)];
+    if (uniqueTokens.length === 0) return map;
+
+    for (const token of uniqueTokens) {
+      if (!token) continue;
+      try {
+        const info = await this.client.getSpreadsheetInfo(token);
+        const list = await this.client.listSheets(token);
+        const resolved: import('../sheet/index.js').ResolvedSheet[] = [];
+
+        for (const s of list) {
+          if (s.hidden) continue;
+          if (s.resource_type && s.resource_type !== 'sheet') {
+            resolved.push({
+              title: s.title ?? '', kind: 'bitable', rows: [],
+              error: `非网格表(${s.resource_type})，已跳过`,
+            });
+            continue;
+          }
+          try {
+            const meta = await this.client.getSheetMeta(token, s.sheet_id!);
+            const { row_count = 0, column_count = 0 } = meta.grid_properties ?? {};
+            if (!row_count || !column_count) {
+              resolved.push({ title: s.title ?? '', kind: 'grid', rows: [] });
+              continue;
+            }
+            const endCol = columnIndexToLetter(column_count);
+            const raw = await this.client.readSheetValues(
+              token, `${s.sheet_id}!A1:${endCol}${row_count}`,
+            );
+            const flat = (raw ?? []).map((row: any[]) => row.map(cellToMd));
+            const expanded = expandMerges(flat, meta.merges ?? []);
+            const trimmed = trimTrailingEmpty(expanded);
+            resolved.push({ title: s.title ?? '', kind: 'grid', rows: trimmed });
+          } catch (e: any) {
+            resolved.push({
+              title: s.title ?? '', kind: 'grid', rows: [],
+              error: `读取失败：${e.message}`,
+            });
+          }
+        }
+        map.set(token, { type: 'sheetResolved', title: info.title ?? '', sheets: resolved });
+      } catch (e: any) {
+        logger.warn(`Failed to render sheet ${token}:`, e.message);
+        map.set(token, { type: 'sheetResolved', title: '', sheets: [] } as any);
+      }
+    }
+    return map;
+  }
 }
 
 // ─── AST Traversal Utilities ─────────────────────────────────────────────────
@@ -245,10 +304,21 @@ function collectWhiteboardTokens (node: MdBlockNode): string[] {
   return tokens;
 }
 
+function collectSheetTokens (node: MdBlockNode): string[] {
+  const tokens: string[] = [];
+  traverseBlockAst(node, n => {
+    if (n.type === 'sheet') {
+      tokens.push(n.token);
+    }
+  });
+  return tokens;
+}
+
 function replaceInAst (
   node: MdBlockNode,
   imageMap: Map<string, string>,
   whiteboardMap: Map<string, MdBlockNode>,
+  sheetMap: Map<string, MdBlockNode>,
 ): void {
   if (node.type === 'image') {
     const newSrc = imageMap.get(node.src);
@@ -270,13 +340,20 @@ function replaceInAst (
         continue;
       }
     }
+    if (child.type === 'sheet') {
+      const replacement = sheetMap.get(child.token);
+      if (replacement) {
+        children[i] = replacement;
+        continue;
+      }
+    }
     if (child.type === 'image') {
       const newSrc = imageMap.get(child.src);
       if (newSrc) {
         (child as MdBlockNode & { src: string }).src = newSrc;
       }
     }
-    replaceInAst(child, imageMap, whiteboardMap);
+    replaceInAst(child, imageMap, whiteboardMap, sheetMap);
   }
 }
 

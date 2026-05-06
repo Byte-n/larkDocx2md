@@ -18,6 +18,7 @@ import { imageParser } from './image.js';
 import { tableParser } from './table.js';
 import { quoteContainerParser } from './quoteContainer.js';
 import { whiteboardParser } from './whiteboard.js';
+import { sheetBlockParser } from './sheet.js';
 
 export function registerBuiltinParsers (parser: Parser): void {
   parser.register(pageParser);
@@ -44,4 +45,5 @@ export function registerBuiltinParsers (parser: Parser): void {
   parser.register(tableParser);
   parser.register(quoteContainerParser);
   parser.register(whiteboardParser);
+  parser.register(sheetBlockParser);
 }

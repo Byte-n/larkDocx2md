@@ -14,7 +14,7 @@ const logger = createLogger('converter');
 // ─── URL Parsing ─────────────────────────────────────────────────────────────
 
 export function parseWikiUrl (url: string): { docType: string; docToken: string } {
-  const m = url.match(/^https:\/\/[\w.-]+\/(docs|docx|wiki)\/([a-zA-Z0-9]+)/);
+  const m = url.match(/^https:\/\/[\w.-]+\/(docs|docx|wiki|sheets)\/([a-zA-Z0-9]+)/);
   if (!m) throw new Error('Invalid feishu document URL');
   return { docType: m[1]!, docToken: m[2]! };
 }
@@ -28,38 +28,54 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
   const client = createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
 
-  // 1. 解析文档 token
+  // 1. 解析文档 token 与类型
   let docToken = rawToken;
+  let objType: string = docType; // 'docx' | 'docs' | 'sheet' | 'wiki'
+
   if (docType === 'wiki') {
     const node = await client.getWikiNodeInfo(docToken);
     docToken = node.obj_token!;
-    logger.info('Resolved docx token:', docToken);
+    objType = node.obj_type as string ?? 'docx';
+    logger.info('Resolved wiki node:', objType, docToken);
+  } else if (docType === 'sheets') {
+    objType = 'sheet';
   }
 
-  // 2. 获取文档内容
-  const doc = await client.getDocxDocument(docToken);
-  const blocks = await client.getDocxBlocks(docToken);
-  logger.info(`Fetched ${blocks.length} blocks`);
+  let ast: import('./md-ast/types.js').MdBlockNode;
 
-  // 3. 解析为 AST
-  const parser = new Parser();
-  registerBuiltinParsers(parser);
-  const ast = parser.parse(doc, blocks);
+  if (objType === 'sheet') {
+    // 独立 sheet 流程
+    const info = await client.getSpreadsheetInfo(docToken);
+    ast = {
+      type: 'page',
+      title: [{ type: 'text', content: info.title ?? '' }],
+      children: [{ type: 'sheet', token: docToken }],
+    };
+  } else {
+    // 原 docx 流程
+    const doc = await client.getDocxDocument(docToken);
+    const blocks = await client.getDocxBlocks(docToken);
+    logger.info(`Fetched ${blocks.length} blocks`);
 
-  // 4. 异步后处理
+    const parser = new Parser();
+    registerBuiltinParsers(parser);
+    ast = parser.parse(doc, blocks);
+  }
+
+  // 异步后处理
   const transformer = new MdTransformer(client, opts);
   await transformer.transform(ast);
 
-  // 5. 序列化为 markdown
+  // 序列化为 markdown
   const serializer = new MdSerializer();
   registerBuiltinSerializers(serializer);
   const markdown = serializer.serialize(ast);
 
-  // 6. 输出
+  // 输出：非 agent 模式、或 agent='local' 模式都需要落盘
   let filePath: string | undefined;
-  if (!opts.agent) {
+  if (!opts.agent || opts.agent === 'local') {
     fs.mkdirSync(opts.output, { recursive: true });
-    filePath = path.join(opts.output, `${docToken}.md`);
+    filePath = path.resolve(opts.output, `${docToken}.md`);
     fs.writeFileSync(filePath, markdown);
     logger.info('Downloaded markdown file to', filePath);
   }

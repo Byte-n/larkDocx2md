@@ -40,7 +40,12 @@ export interface ConvertOptions {
   wbImageMode: WbImageMode;
   wbBg: SvgBackground;
   wbFormat: WbFormat;
-  agent?: boolean;
+  /**
+   * Agent 模式：
+   * - `true`：图片/画板全部走在线 URL，markdown 输出到 stdout
+   * - `'local'`：图片/画板中的图片/markdown 均落盘，stdout 输出引导 AI 读取的提示词
+   */
+  agent?: boolean | 'local';
 }
 
 export interface ConvertResult {

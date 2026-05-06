@@ -246,6 +246,26 @@ const htmlSerializer: NodeSerializer = {
   },
 };
 
+const sheetResolvedSerializer: NodeSerializer = {
+  type: 'sheetResolved',
+  serialize (node) {
+    if (node.type !== 'sheetResolved') return '';
+    let out = '';
+    for (const s of node.sheets) {
+      out += `## 工作表：${s.title}\n\n`;
+      if (s.error) { out += `> ${s.error}\n\n`; continue; }
+      if (!s.rows.length) { out += '_（空表）_\n\n'; continue; }
+      const [head, ...body] = s.rows;
+      if (!head) { out += '_（空表）_\n\n'; continue; }
+      out += `| ${head.join(' | ')} |\n`;
+      out += `| ${head.map(() => '---').join(' | ')} |\n`;
+      for (const r of body) out += `| ${r.join(' | ')} |\n`;
+      out += '\n';
+    }
+    return out;
+  },
+};
+
 export function registerBuiltinSerializers (serializer: MdSerializer): void {
   serializer.register(pageSerializer);
   serializer.register(headingSerializer);
@@ -262,4 +282,5 @@ export function registerBuiltinSerializers (serializer: MdSerializer): void {
   serializer.register(tableSerializer);
   serializer.register(gridSerializer);
   serializer.register(htmlSerializer);
+  serializer.register(sheetResolvedSerializer);
 }

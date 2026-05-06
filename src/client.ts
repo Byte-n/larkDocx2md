@@ -112,9 +112,55 @@ export function createClient (appId: string, appSecret: string, loggerLevel: Log
     return filename;
   }
 
+  // ─── Sheet APIs ─────────────────────────────────────────────────────────────
+
+  async function getSpreadsheetInfo (token: string): Promise<{ title: string; url?: string }> {
+    const data = await call('getSpreadsheetInfo', () =>
+      client.sheets.v3.spreadsheet.get({ path: { spreadsheet_token: token } }),
+    );
+    const spreadsheet = (data as any).spreadsheet ?? data;
+    return { title: spreadsheet.title ?? '', url: spreadsheet.url };
+  }
+
+  async function listSheets (token: string): Promise<any[]> {
+    const data = await call('listSheets', () =>
+      client.sheets.v3.spreadsheetSheet.query({ path: { spreadsheet_token: token } }),
+    );
+    return (data as any).sheets ?? [];
+  }
+
+  async function getSheetMeta (token: string, sheetId: string): Promise<any> {
+    const data = await call('getSheetMeta', () =>
+      client.sheets.v3.spreadsheetSheet.get({
+        path: { spreadsheet_token: token, sheet_id: sheetId },
+      }),
+    );
+    return (data as any).sheet ?? data;
+  }
+
+  async function readSheetValues (
+    token: string,
+    range: string,
+  ): Promise<any[][]> {
+    // 使用 client.request 走 SDK 通用请求通道，确保自动附加 tenant_access_token 鉴权头
+    const resp: any = await (client as any).request({
+      url: `https://open.feishu.cn/open-apis/sheets/v2/spreadsheets/${token}/values/${encodeURIComponent(range)}`,
+      method: 'GET',
+      params: {
+        valueRenderOption: 'UnformattedValue',
+        dateTimeRenderOption: 'FormattedString',
+      },
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+    });
+    if (resp?.code !== 0) {
+      throw new Error(`readSheetValues failed: [${resp?.code}] ${resp?.msg}`);
+    }
+    return resp.data?.valueRange?.values ?? [];
+  }
+
   return {
     getWikiNodeInfo, getDocxDocument, getDocxBlocks, downloadImage, batchGetTmpDownloadUrl, getWhiteboardNodes,
-    downloadWhiteboardAsImage,
+    downloadWhiteboardAsImage, getSpreadsheetInfo, listSheets, getSheetMeta, readSheetValues,
   };
 }
 

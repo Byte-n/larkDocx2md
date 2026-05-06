@@ -1,4 +1,4 @@
 interface:
   display_name: "lark-docx2md"
-  short_description: "Guide Feishu wiki download via lark-docx2md CLI"
-  default_prompt: "Use this skill when you need to run npx -y lark-docx2md download for a Feishu wiki URL and produce Markdown output."
+  short_description: "通过 lark-docx2md CLI 下载飞书 Wiki 文档"
+  default_prompt: "当需要处理飞书 Wiki URL 时，调用本技能运行 `npx -y lark-docx2md dl --agent local`，然后读取 stdout 中输出的绝对路径对应的 Markdown 文件。"

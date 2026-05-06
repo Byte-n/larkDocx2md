@@ -1,3 +1,5 @@
+import type { ResolvedSheet } from '../sheet/index.js';
+
 // ─── 块级节点 ───────────────────────────────────────────────────────────────
 
 export type MdBlockNode =
@@ -13,6 +15,8 @@ export type MdBlockNode =
   | { type: 'divider' }
   | { type: 'image'; alt: string; src: string }
   | { type: 'whiteboard'; token: string }
+  | { type: 'sheet'; token: string }
+  | { type: 'sheetResolved'; title: string; sheets: ResolvedSheet[] }
   | { type: 'table'; rows: MdTableRow[] }
   | { type: 'grid'; children: MdBlockNode[] }
   | { type: 'html'; content: string };

@@ -8,6 +8,7 @@
 
 ### Changed
 
+- **Agent local 提示词优化**：stdout 输出改为 Markdown 格式（加粗标题 + 行内代码路径），语气改为命令式
 - **URL 解析增强**：`parseWikiUrl` 新增解析 `?sheet=` 查询参数，返回 `sheetId`
 - **Serializer 上下文扩展**：新增 `SerializeOptions` 接口与 `SerializeContext.sourceType` 字段，序列化器可感知文档来源类型
 - **移除 `showTitle` 字段**：`sheetResolved` 节点不再使用 `showTitle`，改为根据 `ctx.sourceType === 'sheet'` 和子表数量判断是否输出标题

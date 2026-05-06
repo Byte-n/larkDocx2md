@@ -100,9 +100,9 @@ program
     if (agentLocal) {
       // 本地模式：输出引导 AI 读取文件的提示词（绝对路径）
       process.stdout.write(
-        `The Feishu document has been downloaded to the following absolute path:\n` +
-        `${result.filePath}\n\n` +
-        `Please read this file to access the full markdown content.\n`,
+        `**The Feishu document has been downloaded to the following absolute path:**\n\n` +
+        `\`${result.filePath}\`\n\n` +
+        `**Read this file to access the full markdown content.**\n`,
       );
     } else if (opts.agent === true) {
       process.stdout.write(result.markdown);

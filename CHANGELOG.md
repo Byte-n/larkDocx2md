@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+### Features
+
+- **电子表格（Sheet）支持**：新增独立电子表格链接（`https://*.feishu.cn/sheets/*`）和文档内嵌电子表格块的解析与渲染，自动读取所有工作表并输出为 Markdown 表格
+- **Agent local 模式**：`--agent` 参数新增 `local` 值（`--agent local`），图片/画板/Markdown 均落盘，stdout 输出引导 AI 读取的提示词，适配本地 Agent 场景
+- **CLI `dl` 别名**：`download` 命令新增 `dl` 短别名
+
+### Changed
+
+- **电子表格解析重构**：新增 `src/sheet/index.ts` 模块，提供 `cellToMd`、`expandMerges`、`trimTrailingEmpty`、`columnIndexToLetter` 等工具函数；Transformer 按文档来源（`docx` / `sheet`）区分处理逻辑
+- **URL 解析扩展**：`parseWikiUrl` 支持 `sheets` 类型链接
+- **Client API 扩展**：新增 `getSpreadsheetInfo`、`listSheets`、`getSheetMeta`、`readSheetValues` 方法
+- **AST 节点扩展**：新增 `sheet`、`sheetResolved` 块级节点类型
+- **Agent 类型变更**：`ConvertOptions.agent` 类型由 `boolean` 扩展为 `boolean | 'local'`
+
 ## 0.2.0
 
 ### Features

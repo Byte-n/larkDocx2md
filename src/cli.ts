@@ -96,7 +96,7 @@ program
       wbBg: opts.wbBg,
       wbFormat: opts.wbFormat as WbFormat,
       agent: agentLocal ? 'local' : (opts.agent === true),
-      filterTitle: opts.filterTitle,
+      filterTitle: opts.filterTitle?.trim(),
     });
 
     if (agentLocal) {

@@ -7,7 +7,8 @@ import { registerBuiltinParsers } from './md-ast/parsers/index.js';
 import { MdSerializer, registerBuiltinSerializers } from './md-ast/serializer.js';
 import { MdTransformer } from './md-ast/transformer.js';
 import { createLogger } from './logger.js';
-import type { ConvertOptions, ConvertResult } from './types.js';
+import type { ConvertOptions, ConvertResult, DocxBlock } from './types.js';
+import { createTitleFilter } from './title-filter.js';
 
 const logger = createLogger('converter');
 
@@ -57,7 +58,18 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   } else {
     // 原 docx 流程
     const doc = await client.getDocxDocument(docToken);
-    const blocks = await client.getDocxBlocks(docToken);
+    let blocks: DocxBlock[];
+    if (opts.filterTitle) {
+      const filter = createTitleFilter({ title: opts.filterTitle });
+      await client.getDocxBlocks(docToken, filter.pageHandler);
+      const result = filter.getResult();
+      if (!result.matched) {
+        throw new Error(`未找到匹配的标题「${opts.filterTitle}」，请检查标题文本是否正确`);
+      }
+      blocks = result.blocks;
+    } else {
+      blocks = await client.getDocxBlocks(docToken);
+    }
     logger.info(`Fetched ${blocks.length} blocks`);
 
     const parser = new Parser();

@@ -46,6 +46,8 @@ export interface ConvertOptions {
    * - `'local'`：图片/画板中的图片/markdown 均落盘，stdout 输出引导 AI 读取的提示词
    */
   agent?: boolean | 'local';
+  /** 按标题过滤：仅转换匹配标题及其下级内容 */
+  filterTitle?: string;
 }
 
 export interface ConvertResult {

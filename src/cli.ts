@@ -20,8 +20,9 @@ program
   .option('--wb-bg <style>', 'Whiteboard SVG background: "none", "dot", or a color like "#fff" (or LARK_DOCX2MD_WB_BG)')
   .option('--wb-image-mode <mode>', 'Whiteboard image mode: "online", "base64", or "local" (or LARK_DOCX2MD_WB_IMAGE_MODE)')
   .option('--image-mode <mode>', 'Image handling mode: "local" or "online" (or LARK_DOCX2MD_IMAGE_MODE)')
+  .option('--filter-title <title>', 'Only convert the section matching this heading title')
   .argument('<url>', 'Feishu wiki document URL: https://*.feishu.cn/wiki/*')
-  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string }) => {
+  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string; filterTitle?: string }) => {
     // ─── 环境变量默认值（直接指定 > 环境变量 > 内置默认值）────────────────
     opts.appId = opts.appId ?? process.env.LARK_DOCX2MD_APP_ID;
     opts.appSecret = opts.appSecret ?? process.env.LARK_DOCX2MD_APP_SECRET;
@@ -95,6 +96,7 @@ program
       wbBg: opts.wbBg,
       wbFormat: opts.wbFormat as WbFormat,
       agent: agentLocal ? 'local' : (opts.agent === true),
+      filterTitle: opts.filterTitle,
     });
 
     if (agentLocal) {

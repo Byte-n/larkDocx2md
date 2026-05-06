@@ -4,26 +4,37 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { DocInfo, DocxBlock, WhiteboardNode } from './types.js';
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const RATE_LIMIT_MAX_RETRIES = 3;
+const RATE_LIMIT_RETRY_DELAY = 500;
+
 export function createClient (appId: string, appSecret: string, loggerLevel: LoggerLevel = LoggerLevel.warn) {
   const client = new lark.Client({ appId, appSecret, loggerLevel });
 
   async function call<T> (name: string, fn: () => Promise<{ code?: number; msg?: string; data?: T }>): Promise<T> {
-    let res;
-    try {
-      res = await fn();
-    } catch (e: any) {
-      const error = e.response?.data?.error;
-      const code = e.response?.data?.code;
-      const msg = e.response?.data?.msg;
-      if (error) {
-        throw new Error(`${name} failed: [${code}] ${msg}: \n${JSON.stringify(error, null, 2)}`);
+    for (let attempt = 0; attempt <= RATE_LIMIT_MAX_RETRIES; attempt++) {
+      let res;
+      try {
+        res = await fn();
+      } catch (e: any) {
+        const code = e.response?.data?.code;
+        const msg = e.response?.data?.msg;
+        if (code === 99991400 && attempt < RATE_LIMIT_MAX_RETRIES) {
+          await sleep(RATE_LIMIT_RETRY_DELAY * (attempt + 1));
+          continue;
+        }
+        const error = e.response?.data?.error;
+        if (error) {
+          throw new Error(`${name} failed: [${code}] ${msg}: \n${JSON.stringify(error, null, 2)}`);
+        }
+        throw e;
       }
-      throw e;
+      if (res.code !== 0) {
+        throw new Error(`${name} failed: [${res.code}] ${res.msg}`);
+      }
+      return res.data!;
     }
-    if (res.code !== 0) {
-      throw new Error(`${name} failed: [${res.code}] ${res.msg}`);
-    }
-    return res.data!;
+    throw new Error(`${name} failed: 频率限制重试次数已用尽`);
   }
 
   async function getWikiNodeInfo (token: string) {
@@ -41,21 +52,38 @@ export function createClient (appId: string, appSecret: string, loggerLevel: Log
     return { documentId: doc.document_id!, title: doc.title! };
   }
 
-  async function getDocxBlocks (docToken: string): Promise<DocxBlock[]> {
-    const blocks: DocxBlock[] = [];
+  /**
+   * 分页获取文档所有块。
+   * @param docToken
+   * @param pageHandler 可选回调，每页 blocks 传入，返回 false 则提前终止分页。
+   *                    不传时收集所有块后一次性返回。
+   */
+  async function getDocxBlocks (docToken: string, pageHandler?: (blocks: DocxBlock[]) => boolean): Promise<DocxBlock[]> {
+    const allBlocks: DocxBlock[] = [];
     let pageToken: string | undefined;
-    for (; ;) {
+    for (let i = 0; true ; i++) {
+      if (i > 0) {
+        // 单个应用调用频率上限为每秒 5 次
+        await sleep(100);
+      }
       const data = await call('getDocxBlocks', () =>
         client.docx.v1.documentBlock.list({
           path: { document_id: docToken },
           params: { page_size: 500, document_revision_id: -1, page_token: pageToken },
         }),
       );
-      if (data.items) blocks.push(...data.items);
+      const items = (data.items ?? []) as DocxBlock[];
+      if (pageHandler) {
+        const shouldContinue = pageHandler(items);
+        allBlocks.push(...items);
+        if (!shouldContinue) break;
+      } else {
+        allBlocks.push(...items);
+      }
       if (!data.has_more) break;
       pageToken = data.page_token;
     }
-    return blocks;
+    return allBlocks;
   }
 
   /**

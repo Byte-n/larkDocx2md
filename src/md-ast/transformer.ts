@@ -245,7 +245,7 @@ export class MdTransformer {
       try {
       const info = await this.client.getSpreadsheetInfo(spreadsheetToken);
       const list = await this.client.listSheets(spreadsheetToken);
-      const sheetsToProcess = this.sourceType === 'sheet'
+      const sheetsToProcess = this.sourceType === 'sheet' && !sheetId
         ? list
         : list.filter(s => s.sheet_id === sheetId);
       const resolved: ResolvedSheet[] = [];
@@ -287,11 +287,10 @@ export class MdTransformer {
         type: 'sheetResolved',
         title: info.title ?? '',
         sheets: resolved,
-        showTitle: this.sourceType === 'sheet',
       });
       } catch (e: any) {
         logger.warn(`Failed to resolve sheet ${raw}:`, e.message);
-        map.set(raw, { type: 'sheetResolved', title: '', sheets: [], showTitle: false });
+        map.set(raw, { type: 'sheetResolved', title: '', sheets: [] });
       }
     }
     return map;

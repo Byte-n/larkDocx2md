@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.1
+
+### Features
+
+- **电子表格指定子表**：支持 `?sheet=<sheetId>` 查询参数，如 `https://*.feishu.cn/sheets/xxx?sheet=MJ9I17`，仅处理指定的单个工作表
+
+### Changed
+
+- **URL 解析增强**：`parseWikiUrl` 新增解析 `?sheet=` 查询参数，返回 `sheetId`
+- **Serializer 上下文扩展**：新增 `SerializeOptions` 接口与 `SerializeContext.sourceType` 字段，序列化器可感知文档来源类型
+- **移除 `showTitle` 字段**：`sheetResolved` 节点不再使用 `showTitle`，改为根据 `ctx.sourceType === 'sheet'` 和子表数量判断是否输出标题
+
 ## 0.3.0
 
 ### Features

@@ -4,7 +4,7 @@
 
 将飞书文档转换为 Markdown 文件的命令行工具。
 
-> 支持的飞书文档链接格式：`https://*.feishu.cn/wiki/*`、`https://*.feishu.cn/sheets/*`
+> 支持的飞书文档链接格式：`https://*.feishu.cn/wiki/*`、`https://*.feishu.cn/sheets/*`（支持 `?sheet=<sheetId>` 指定子表）
 
 ## 使用
 
@@ -32,7 +32,7 @@ npx -y lark-docx2md@latest download <url>
 
 | 参数                       | 说明                                        | 环境变量                         | 默认值                   |
 |--------------------------|-------------------------------------------|------------------------------|-----------------------|
-| `<url>`                  | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`） | —                            | —                     |
+| `<url>`                  | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`，支持 `?sheet=<sheetId>` 指定子表） | —                            | —                     |
 | `--app-id <id>`          | 飞书应用 App ID                               | `LARK_DOCX2MD_APP_ID`        | —                     |
 | `--app-secret <secret>`  | 飞书应用 App Secret                           | `LARK_DOCX2MD_APP_SECRET`    | —                     |
 | `-o, --output <dir>`     | 输出目录                                      | `LARK_DOCX2MD_OUTPUT`        | `./larkDocx2mdOutput` |
@@ -55,7 +55,7 @@ npx -y lark-docx2md@latest download <url>
 - 输出标准 Markdown 文件
 - 支持飞书画板，输出格式：`base64`（data URI 内嵌）、`inline-svg`（SVG 标签内嵌）、`svg`（独立文件）、`yaml`（AI
   友好结构化数据）。详见 [画板支持说明](./WHITEBOARD.md)
-- 支持飞书电子表格（独立 sheet URL 或 docx 内嵌 sheet 块），输出 GFM 表格，自动展开合并单元格。详见 [电子表格支持说明](./SHEET.md)
+- 支持飞书电子表格（独立 sheet URL 或 docx 内嵌 sheet 块），输出 GFM 表格，自动展开合并单元格；支持 `?sheet=<sheetId>` 仅处理指定子表。详见 [电子表格支持说明](./SHEET.md)
 
 ### 支持的内容块类型
 

@@ -1,4 +1,5 @@
 import { Registry } from '../core/registry.js';
+import type { DocSourceType } from './transformer.js';
 import type { MdBlockNode, MdInlineNode } from './types.js';
 
 export interface NodeSerializer {
@@ -7,7 +8,13 @@ export interface NodeSerializer {
   serialize (node: MdBlockNode, ctx: SerializeContext): string;
 }
 
+export interface SerializeOptions {
+  sourceType?: DocSourceType;
+}
+
 export interface SerializeContext {
+  sourceType: DocSourceType;
+
   serialize (node: MdBlockNode, indent?: number): string;
 
   serializeInline (nodes: MdInlineNode[]): string;
@@ -20,8 +27,9 @@ export class MdSerializer {
     this.registry.register(serializer.type, serializer);
   }
 
-  serialize (root: MdBlockNode): string {
+  serialize (root: MdBlockNode, options: SerializeOptions = {}): string {
     const ctx: SerializeContext = {
+      sourceType: options.sourceType ?? 'docx',
       serialize: (node: MdBlockNode, indent = 0): string => {
         const serializer = this.registry.get(node.type);
         if (serializer) {
@@ -248,11 +256,11 @@ const htmlSerializer: NodeSerializer = {
 
 const sheetResolvedSerializer: NodeSerializer = {
   type: 'sheetResolved',
-  serialize (node) {
+  serialize (node, ctx) {
     if (node.type !== 'sheetResolved') return '';
     let out = '';
     for (const s of node.sheets) {
-      if (node.showTitle) {
+      if (ctx.sourceType === 'sheet') {
         out += `## ${node.title}-${s.title}\n\n`;
       }
       if (s.error) { out += `> ${s.error}\n\n`; continue; }

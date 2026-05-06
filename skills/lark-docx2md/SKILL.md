@@ -1,19 +1,19 @@
 ---
 name: lark-docx2md
-description: 读取飞书 Wiki 文档（`https://*.feishu.cn/wiki/...`）内容。当需要读取、导入、归档、分析或处理 `https://*.feishu.cn/wiki/` 链接的内容时使用。
+description: 读取飞书 Wiki 文档或电子表格（`https://*.feishu.cn/wiki/...`、`https://*.feishu.cn/sheets/...`）内容。当需要读取、导入、归档、分析或处理飞书 wiki 或 sheets 链接的内容时使用。
 ---
 
 # lark-docx2md
 
-将飞书文档 URL 转换为本地 Markdown 文件，命令标准输出包含文件绝对路径的提示词。
+将飞书文档或电子表格 URL 转换为本地 Markdown 文件，命令标准输出包含文件绝对路径的提示词。
 
 ## 必要输入
 
-- 飞书文档 URL，格式为 `https://*.feishu.cn/wiki/...`
+- 飞书文档 URL，格式为 `https://*.feishu.cn/wiki/...` 或 `https://*.feishu.cn/sheets/...`（可带 `?sheet=xxx` 参数）
 
 ## 工作流程
 
-1. 验证 URL 包含 `/wiki/`。
+1. 验证 URL 包含 `/wiki/` 或 `/sheets/`。
 2. **必须**严格按以下命令调用，`--agent local` 参数不可省略：
 
 ```bash
@@ -32,7 +32,7 @@ npx -y lark-docx2md@latest dl --agent local "<wiki_url>"
 
 ## 异常处理
 
-- 如果 URL 格式无效，要求提供有效的 `https://*.feishu.cn/wiki/` 链接。
+- 如果 URL 格式无效，要求提供有效的 `https://*.feishu.cn/wiki/` 或 `https://*.feishu.cn/sheets/` 链接。
 - 如果输出为空，报告所使用的命令并附上 stderr 关键信息。
 
 ## 响应风格

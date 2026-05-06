@@ -16,7 +16,7 @@ export type MdBlockNode =
   | { type: 'image'; alt: string; src: string }
   | { type: 'whiteboard'; token: string }
   | { type: 'sheet'; token: string }
-  | { type: 'sheetResolved'; title: string; sheets: ResolvedSheet[]; showTitle?: boolean }
+  | { type: 'sheetResolved'; title: string; sheets: ResolvedSheet[] }
   | { type: 'table'; rows: MdTableRow[] }
   | { type: 'grid'; children: MdBlockNode[] }
   | { type: 'html'; content: string };

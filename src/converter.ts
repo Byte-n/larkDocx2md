@@ -13,17 +13,19 @@ const logger = createLogger('converter');
 
 // ─── URL Parsing ─────────────────────────────────────────────────────────────
 
-export function parseWikiUrl (url: string): { docType: string; docToken: string } {
+export function parseWikiUrl (url: string): { docType: string; docToken: string; sheetId?: string } {
   const m = url.match(/^https:\/\/[\w.-]+\/(docs|docx|wiki|sheets)\/([a-zA-Z0-9]+)/);
   if (!m) throw new Error('Invalid feishu document URL');
-  return { docType: m[1]!, docToken: m[2]! };
+  // 解析 ?sheet=XXX 查询参数（仅对 sheets 类型有意义）
+  const sheetId = new URL(url).searchParams.get('sheet') ?? undefined;
+  return { docType: m[1]!, docToken: m[2]!, sheetId };
 }
 
 // ─── Core Convert ────────────────────────────────────────────────────────────
 
 export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
-  const { docType, docToken: rawToken } = parseWikiUrl(opts.url);
-  logger.info('Captured document token:', rawToken);
+  const { docType, docToken: rawToken, sheetId } = parseWikiUrl(opts.url);
+  logger.info('Captured document token:', rawToken, sheetId ? `sheetId: ${sheetId}` : '');
 
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
   const client = createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
@@ -44,12 +46,13 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   let ast: import('./md-ast/types.js').MdBlockNode;
 
   if (objType === 'sheet') {
-    // 独立 sheet 流程
+    // 独立 sheet 流程：有 sheetId 时拼接为 token_sheetId 格式
     const info = await client.getSpreadsheetInfo(docToken);
+    const sheetToken = sheetId ? `${docToken}_${sheetId}` : docToken;
     ast = {
       type: 'page',
       title: [{ type: 'text', content: info.title ?? '' }],
-      children: [{ type: 'sheet', token: docToken }],
+      children: [{ type: 'sheet', token: sheetToken }],
     };
   } else {
     // 原 docx 流程
@@ -69,7 +72,7 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   // 序列化为 markdown
   const serializer = new MdSerializer();
   registerBuiltinSerializers(serializer);
-  const markdown = serializer.serialize(ast);
+  const markdown = serializer.serialize(ast, { sourceType: objType === 'sheet' ? 'sheet' : 'docx' });
 
   // 输出：非 agent 模式、或 agent='local' 模式都需要落盘
   let filePath: string | undefined;

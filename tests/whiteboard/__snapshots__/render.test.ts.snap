@@ -1,0 +1,141 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderers - composite_shape > renders ellipse shape 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 128 108" width="128" height="108">
+<g transform="translate(0,0)" data-shape="ellipse">
+<ellipse cx="40" cy="30" rx="40" ry="30" fill="none" stroke="#333"/>
+</g>
+</svg>"
+`;
+
+exports[`renderers - composite_shape > renders rectangle shape with text 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 148 108" width="148" height="108">
+<g transform="translate(0,0)" data-shape="rect">
+<rect width="100" height="60" fill="#e0e0e0" stroke="#333"/>
+<text font-size="14" fill="#333" x="4" y="18">Rect</text>
+</g>
+</svg>"
+`;
+
+exports[`renderers - connector > renders connector with two attached endpoints 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 308 188" width="308" height="188">
+<defs><marker id="arrow-triangle" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M0 0L10 5L0 10Z" fill="currentColor"/></marker></defs>
+<g transform="translate(0,0)" data-id="a" data-shape="rect">
+<rect width="60" height="40" fill="none" stroke="#333"/>
+</g>
+<g transform="translate(200,100)" data-id="b" data-shape="rect">
+<rect width="60" height="40" fill="none" stroke="#333"/>
+</g>
+<g data-id="c" data-connector-shape="straight" data-from="a" data-to="b">
+<path d="M 30 20 L 230 120" fill="none" stroke="#333" marker-end="url(#arrow-triangle)"/>
+</g>
+</svg>"
+`;
+
+exports[`renderers - simple > renders group wrapping children 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 148 148" width="148" height="148">
+<g data-type="group">
+<g transform="translate(10,10)">
+<text font-size="14" fill="#333" x="4" y="18">x</text>
+</g>
+</g>
+</svg>"
+`;
+
+exports[`renderers - simple > renders image with token 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -4 128 108" width="128" height="108">
+<g transform="translate(10,20)" data-type="image"><rect width="80" height="60" fill="none" stroke="#333" rx="2"/><image href="TOK_X" width="80" height="60"/></g>
+</svg>"
+`;
+
+exports[`renderers - simple > renders paint (multiple points → polyline) 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 68 58" width="68" height="58">
+<polyline points="0,0 10,10 20,5" fill="none" stroke="#ff0" stroke-width="2" stroke-opacity="0.4" stroke-linecap="round" stroke-linejoin="round" data-type="paint" data-paint-type="highlight" data-id="p"/>
+</svg>"
+`;
+
+exports[`renderers - simple > renders paint (single point → circle) 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-14 -14 48 48" width="48" height="48">
+<circle cx="10" cy="10" r="2" fill="#f00" data-type="paint" data-paint-type="marker" data-id="p"/>
+</svg>"
+`;
+
+exports[`renderers - simple > renders section with title and children 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 248 198" width="248" height="198">
+<g transform="translate(0,0)" data-type="section" data-title="Group A">
+<rect width="200" height="150" fill="none" stroke="#333"/>
+<text x="8" y="18" font-size="14" fill="#333" font-weight="bold">Group A</text>
+<g transform="translate(10,30)">
+<text font-size="14" fill="#333" x="4" y="18">inside</text>
+</g>
+</g>
+</svg>"
+`;
+
+exports[`renderers - simple > renders sticky_note with custom color 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 148 148" width="148" height="148">
+<g transform="translate(0,0)">
+<rect width="100" height="100" rx="4" fill="#f5f5dc" stroke="#E6D F6C"/>
+<text font-size="14" fill="#333" x="4" y="18">Note</text>
+</g>
+</svg>"
+`;
+
+exports[`renderers - simple > renders text_shape 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 168 78" width="168" height="78">
+<g transform="translate(0,0)">
+<text font-size="14" fill="#333" x="4" y="18">Hello</text>
+</g>
+</svg>"
+`;
+
+exports[`renderers - table > renders 2x2 table with meta and cells 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 248 148" width="248" height="148">
+<g transform="translate(0,0)" data-type="table">
+<rect width="200" height="100" fill="none" stroke="#333"/>
+<line x1="0" y1="50" x2="200" y2="50" stroke="#ccc" stroke-width="0.5"/>
+<line x1="100" y1="0" x2="100" y2="100" stroke="#ccc" stroke-width="0.5"/>
+<g data-node-type="tr" transform="translate(0,0)">
+<g data-node-type="td" data-col="1">
+<g transform="translate(0,0)"><text font-size="14" fill="#333" x="4" y="18">A</text></g>
+</g>
+<g data-node-type="td" data-col="2">
+<g transform="translate(100,0)"><text font-size="14" fill="#333" x="4" y="18">B</text></g>
+</g>
+</g>
+<g data-node-type="tr" transform="translate(0,50)">
+<g data-node-type="td" data-col="1">
+<g transform="translate(0,0)"><text font-size="14" fill="#333" x="4" y="18">C</text></g>
+</g>
+<g data-node-type="td" data-col="2">
+<g transform="translate(100,0)"><text font-size="14" fill="#333" x="4" y="18">D</text></g>
+</g>
+</g>
+</g>
+</svg>"
+`;
+
+exports[`whiteboardNodesToSvg - top-level > calculates viewBox considering node bounds + padding 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="76 26 248 148" width="248" height="148">
+<g transform="translate(100,50)"></g>
+</svg>"
+`;
+
+exports[`whiteboardNodesToSvg - top-level > includes background color rect 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-24 -24 98 98" width="98" height="98">
+<rect x="-24" y="-24" width="98" height="98" fill="#f0f0f0"/>
+<g transform="translate(0,0)"></g>
+</svg>"
+`;
+
+exports[`whiteboardNodesToSvg - top-level > produces default viewBox for empty input 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+
+</svg>"
+`;
+
+exports[`whiteboardNodesToSvg - top-level > viewBox accounts for node rotation 1`] = `
+"<svg xmlns="http://www.w3.org/2000/svg" viewBox="-44.71 -44.71 189.42 189.42" width="189.42" height="189.42">
+<g transform="translate(0,0) rotate(45,50,50)"></g>
+</svg>"
+`;

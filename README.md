@@ -4,7 +4,13 @@
 
 将飞书文档、电子表格转换为 Markdown 文件的命令行工具。
 
-> 支持的飞书文档链接格式：`https://*.feishu.cn/wiki/*`、`https://*.feishu.cn/sheets/*`（支持 `?sheet=<sheetId>` 指定子表）
+
+支持：
+- 飞书文档：`https://*.feishu.cn/wiki/*`
+  - Markdown 类型中的标题、列表、基础文字等常见的文本样式
+  - 飞书文档中的内嵌画板、电子表格
+  - ...见下表‘支持的内容块类型’
+- 飞书电子表格：`https://*.feishu.cn/sheets/*`（支持 `?sheet=<sheetId>` 指定子表）、`https://*.feishu.cn/wiki/*`
 
 ## 使用
 

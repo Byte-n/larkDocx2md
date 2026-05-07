@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.0
+
+### Features
+
+- **按标题过滤文档内容**：新增 `--filter-title` CLI 参数与 `ConvertOptions.filterTitle` 选项，仅输出指定标题所在章节的内容
+
+### Fixed
+
+- **filterTitle 入参容错**：对 `filterTitle` 应用 `trim()`，避免空白字符导致匹配失败
+
 ## 0.3.2
 
 ### Changed

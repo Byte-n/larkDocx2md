@@ -1,0 +1,138 @@
+name: Publish to npm
+
+# 触发条件：release/vX.Y.Z 格式的分支被合并进主分支时
+# 额外校验：
+#   1. 分支名称符合 release/vX.Y.Z 语义化版本格式
+#   2. PR 中存在 "release: X.Y.Z" 格式的 commit，且版本号与分支名称一致
+#   3. package.json 的 version 字段也与分支/commit 版本号一致
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  publish:
+    # 仅当 PR 被合并（而非直接 close）且 head 分支以 release/v 开头时才执行
+    if: >-
+      github.event.pull_request.merged == true &&
+      startsWith(github.event.pull_request.head.ref, 'release/v')
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write
+      id-token: write
+
+    steps:
+      - name: Checkout merged commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          fetch-depth: 0
+
+      - name: Extract version from branch name
+        id: branch_version
+        run: |
+          BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+          VERSION="${BRANCH_NAME#release/v}"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::Branch version '$VERSION' 不是合法的语义化版本号"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "分支版本号：$VERSION"
+
+      - name: Verify release commit exists in PR
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          VERSION: ${{ steps.branch_version.outputs.version }}
+        run: |
+          echo "PR 提交历史："
+          git log "$BASE_SHA".."$HEAD_SHA" --pretty=format:"%h %s" || true
+          echo
+          if ! git log "$BASE_SHA".."$HEAD_SHA" --pretty=format:"%s" \
+              | grep -qE "^release:[[:space:]]*${VERSION}[[:space:]]*$"; then
+            echo "::error::未找到 'release: ${VERSION}' 的提交，版本号必须与分支名称一致"
+            exit 1
+          fi
+          echo "已找到匹配的 release 提交"
+
+      - name: Verify package.json version
+        env:
+          VERSION: ${{ steps.branch_version.outputs.version }}
+        run: |
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "package.json 版本：$PKG_VERSION"
+          if [ "$VERSION" != "$PKG_VERSION" ]; then
+            echo "::error::分支版本 '$VERSION' 与 package.json 版本 '$PKG_VERSION' 不一致"
+            exit 1
+          fi
+
+      - name: Check if version already published
+        env:
+          VERSION: ${{ steps.branch_version.outputs.version }}
+        run: |
+          PKG_NAME=$(node -p "require('./package.json').name")
+          if npm view "${PKG_NAME}@${VERSION}" version >/dev/null 2>&1; then
+            echo "::error::${PKG_NAME}@${VERSION} 已经发布过，终止流程"
+            exit 1
+          fi
+          echo "${PKG_NAME}@${VERSION} 未发布，继续"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.30.1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'pnpm'
+
+      # Trusted Publishing 需要 npm CLI >= 11.5.1（Node 20 自带的 npm 版本过低）
+      - name: Upgrade npm CLI for Trusted Publishing
+        run: npm install -g npm@latest
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run tests
+        run: pnpm run test:run
+
+      - name: Build
+        run: pnpm run build
+
+      # 使用 npm Trusted Publishing（OIDC），无需 NPM_TOKEN
+      # 注意：必须用 npm publish 而不是 pnpm publish，pnpm 目前不支持 OIDC 认证
+      - name: Publish to npm (via Trusted Publishing)
+        run: npm publish --access public --provenance
+
+      - name: Create and push git tag
+        env:
+          VERSION: ${{ steps.branch_version.outputs.version }}
+          MERGE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+        run: |
+          TAG="v${VERSION}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          # 若远端已存在同名 tag，则跳过，避免工作流失败
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "远端已存在 tag ${TAG}，跳过创建"
+            exit 0
+          fi
+          git tag -a "${TAG}" -m "release: ${VERSION}" "${MERGE_SHA}"
+          git push origin "${TAG}"
+          echo "已创建并推送 tag ${TAG}"
+
+      - name: Summary
+        env:
+          VERSION: ${{ steps.branch_version.outputs.version }}
+        run: |
+          echo "## 🎉 发布成功" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 版本：\`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Tag：\`v$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 分支：\`${{ github.event.pull_request.head.ref }}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- 合并 SHA：\`${{ github.event.pull_request.merge_commit_sha }}\`" >> "$GITHUB_STEP_SUMMARY"

@@ -152,6 +152,57 @@ describe('createTitleFilter', () => {
     expect(getResult().matched).toBe(false);
   });
 
+  it('collects all scanned headings into availableHeadings when not matched (no dedupe, in order)', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Missing' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'Intro'),
+      makeTextBlock('t1'),
+      makeHeadingBlock(2, 'Section A'),
+      makeHeadingBlock(3, 'Section A'), // 重复文本但 level 不同
+      makeHeadingBlock(2, 'Section A'), // 完全重复
+      makeHeadingBlock(1, 'Outro'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(false);
+    expect(result.availableHeadings).toEqual([
+      { level: 1, text: 'Intro' },
+      { level: 2, text: 'Section A' },
+      { level: 3, text: 'Section A' },
+      { level: 2, text: 'Section A' },
+      { level: 1, text: 'Outro' },
+    ]);
+  });
+
+  it('availableHeadings only records headings scanned before match', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Target' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'Before'),
+      makeHeadingBlock(2, 'Target'),
+      makeHeadingBlock(3, 'Child'),     // collecting 阶段，不进 availableHeadings
+      makeHeadingBlock(1, 'After'),     // 触发结束，不进 availableHeadings
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.availableHeadings).toEqual([
+      { level: 1, text: 'Before' },
+      { level: 2, text: 'Target' },
+    ]);
+  });
+
+  it('availableHeadings is empty when document has no headings', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Whatever' });
+
+    pageHandler([makePageBlock(), makeTextBlock('t1'), makeTextBlock('t2')]);
+
+    const result = getResult();
+    expect(result.matched).toBe(false);
+    expect(result.availableHeadings).toEqual([]);
+  });
+
   it('subsequent pageHandler calls after done still return false (covers done state)', () => {
     const { pageHandler } = createTitleFilter({ title: 'A' });
 

@@ -15,6 +15,8 @@ export interface TitleFilterResult {
   blocks: DocxBlock[];
   /** 是否已找到匹配 */
   matched: boolean;
+  /** 扫描期间遇到的所有 heading（按出现顺序，不去重；仅 scanning 阶段收集） */
+  availableHeadings: Array<{ level: number; text: string }>;
 }
 
 /**
@@ -58,6 +60,7 @@ export function createTitleFilter (options: TitleFilterOptions): {
   let state: FilterState = 'scanning';
   let matchedLevel = 0;
   const collected: DocxBlock[] = [];
+  const seenHeadings: Array<{ level: number; text: string }> = [];
 
   function pageHandler (blocks: DocxBlock[]): boolean {
     for (const block of blocks) {
@@ -70,7 +73,9 @@ export function createTitleFilter (options: TitleFilterOptions): {
         case 'scanning': {
           const level = getHeadingLevel(block);
           if (level !== null) {
-            const text = extractHeadingText(block);
+            const text = extractHeadingText(block) ?? '';
+            // 记录扫描到的所有标题（不去重、按出现顺序），用于未匹配时给出可用标题列表
+            seenHeadings.push({ level, text });
             if (text === targetTitle) {
               state = 'collecting';
               matchedLevel = level;
@@ -97,7 +102,11 @@ export function createTitleFilter (options: TitleFilterOptions): {
   }
 
   function getResult (): TitleFilterResult {
-    return { blocks: [...collected], matched: state === 'collecting' || state === 'done' };
+    return {
+      blocks: [...collected],
+      matched: state === 'collecting' || state === 'done',
+      availableHeadings: [...seenHeadings],
+    };
   }
 
   return { pageHandler, getResult };

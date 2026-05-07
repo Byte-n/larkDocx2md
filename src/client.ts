@@ -112,8 +112,11 @@ export function createClient (appId: string, appSecret: string, loggerLevel: Log
       await resp.writeFile(filename);
       return filename;
     } catch (error: any) {
-      if ([400, 401, 403].includes(error.status)) {
-        throw new Error(`下载图片[${imgToken}]异常, 检查是否有接口 https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download 的权限。`);
+      if (error.status === 401) {
+        throw new Error(`下载图片[${imgToken}]异常, 检查是否有接口 https://open.feishu.cn/document/server-docs/docs/drive-v1/media/download 的权限`);
+      }
+      if (error.status === 403) {
+        throw new Error(`下载图片[${imgToken}]异常, 应用的文档权限大于等于文档本身“谁可以创建副本、打印和下载”的权限`);
       }
       throw error;
     }

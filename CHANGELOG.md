@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.1
+
+### Changed
+
+- **`filterTitle` 无匹配时列出可用标题**：当 `--filter-title` / `ConvertOptions.filterTitle` 未在文档中找到对应标题时，错误信息附带文档中所有可用标题清单，便于快速定位与排错
+
 ## 0.5.0
 
 ### Features

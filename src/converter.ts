@@ -64,7 +64,14 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
       await client.getDocxBlocks(docToken, filter.pageHandler);
       const result = filter.getResult();
       if (!result.matched) {
-        throw new Error(`未找到匹配的标题「${opts.filterTitle}」，请检查标题文本是否正确`);
+        let msg = `No heading matched "${opts.filterTitle}". Please verify the heading text.`;
+        if (result.availableHeadings.length > 0) {
+          const list = result.availableHeadings
+            .map(h => `${'#'.repeat(h.level)} ${h.text}`)
+            .join('\n');
+          msg += `\n\nAvailable headings in the document:\n\n${list}`;
+        }
+        throw new Error(msg);
       }
       blocks = result.blocks;
     } else {

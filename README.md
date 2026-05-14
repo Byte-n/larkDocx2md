@@ -42,7 +42,7 @@ npx -y lark-docx2md@latest download <url>
 | `--app-id <id>`          | 飞书应用 App ID                               | `LARK_DOCX2MD_APP_ID`        | —                     |
 | `--app-secret <secret>`  | 飞书应用 App Secret                           | `LARK_DOCX2MD_APP_SECRET`    | —                     |
 | `-o, --output <dir>`     | 输出目录                                      | `LARK_DOCX2MD_OUTPUT`        | `./larkDocx2mdOutput` |
-| `--agent [mode]`         | Agent 模式：日志 ERROR。不传值（或 `=true`）为在线模式，Markdown 输出到 stdout；传 `local` 则落盘后输出引导 AI 读取的提示词 | `LARK_DOCX2MD_AGENT=true\|local`    | `false`               |
+| `--agent [mode]`         | Agent 模式：日志 ERROR。不传值（或 `=stdout`）为在线模式，Markdown 输出到 stdout；传 `local` 则落盘后输出引导 AI 读取的提示词 | `LARK_DOCX2MD_AGENT=stdout\|local`  | `false`               |
 | `--image-mode <mode>`    | 图片处理模式：`local`（下载到本地）或 `online`（24h 临时链接） | `LARK_DOCX2MD_IMAGE_MODE`    | `local`               |
 | `--filter-title <title>` | 按标题过滤：仅转换匹配标题及其下级内容（匹配到同级或更高级标题时截止） | —                            | —                     |
 | `--filter-title-block-id <id>` | 按 heading 块 id 精确过滤（无同名歧义），通常配合 `get-titles` 子命令获取；与 `--filter-title` 互斥 | —                            | —                     |
@@ -73,7 +73,7 @@ npx -y lark-docx2md@latest get-titles --agent <url>
 | `--format <format>`   | 输出格式：`yaml`（扁平） \| `yaml-tree`（嵌套） \| `json` \| `tree`（json 嵌套） \| `text`（缩进的 markdown 标题） | `yaml` |
 | `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
 
-输出包含 `blockId` / `index` / `level` / `text` / `path`，可被 AI 直接消费用于选择目标章节。
+输出包含 `blockId` / `level` / `text`，可被 AI 直接消费用于选择目标章节（嵌套关系由 `yaml-tree` / `tree` 格式天然表达）。
 
 ## 功能
 

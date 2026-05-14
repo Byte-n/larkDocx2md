@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.3-beta.1
+
+### Changed
+
+- **`--agent` 取值规范化**：CLI `--agent` 与环境变量 `LARK_DOCX2MD_AGENT` 显式接受 `stdout` 或 `local`；不带值的 `--agent` 仍等价于 `stdout`，但环境变量原 `true` 形式已不再支持，需改写为 `LARK_DOCX2MD_AGENT=stdout`
+- **`HeadingInfo` 结构精简**：导出的 `HeadingInfo` 仅保留 `blockId` / `level` / `text` 三个字段，移除 `index` 与 `path`；`get-titles` 输出与 `--filter-title` 错误清单同步收敛
+- **代码组织拆分**：将 `getTitles` / `buildTitleTree` 从 `converter.ts` 抽离至独立模块 `src/get-titles.ts`，URL 解析逻辑迁移至 `src/url.ts`
+
 ## 0.5.3-beta.0
 
 ### Features

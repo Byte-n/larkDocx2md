@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.3-beta.2
+
+### Features
+
+- **`--filter-title` / `--filter-title-block-id` 注入父级标题**：命中深层标题时，自动把所有更高层级的祖先标题（仅 heading 块本身）按文档顺序一并输出，保留章节层级上下文；顶级命中不注入，跳级不伪造中间层，旁支兄弟自动排除
+
+### Changed
+
+- **docx 表格输出改为 Markdown 管道格式**：原 `<table>` HTML 输出（包含 `rowspan` / `colspan`）改为标准 GFM 管道表格；合并单元格按「复制顶格值」策略展开，单元格内容自动转义 `|` 与换行；`Table` 与电子表格 `Sheet` 现使用同一 `renderMarkdownTable` 实现
+
 ## 0.5.3-beta.1
 
 ### Changed

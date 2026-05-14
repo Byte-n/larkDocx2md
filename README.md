@@ -57,6 +57,7 @@ npx -y lark-docx2md@latest download <url>
 > - 非 agent 模式下 `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
 > - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 yaml 清单。
 > - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
+> - **命中深层标题时自动注入父级标题（仅 heading 块本身）**：两个过滤参数均会按文档顺序补齐包含路径上的顶层→该标题的所有祖先标题，以保留章节层级上下文；不会引入旁支兄弟或伪造跳级。
 
 ## 子命令：`get-titles`
 
@@ -100,7 +101,7 @@ npx -y lark-docx2md@latest get-titles --agent <url>
 | Callout             | 高亮块     | `>[!TIP]` + 子块             |
 | Divider             | 分割线     | `---`                      |
 | Image               | 图片      | `![图片](url)`               |
-| Table / TableCell   | 表格      | `<table>` HTML（支持合并单元格）    |
+| Table / TableCell   | 表格      | GFM 管道表格（合并单元格按值展开）  |
 | QuoteContainer      | 引用容器    | `> 子块内容`                   |
 | Grid / GridColumn   | 分栏布局    | 展平为子块内容                    |
 | Sheet               | 电子表格    | GFM 表格（合并单元格自动展开）          |

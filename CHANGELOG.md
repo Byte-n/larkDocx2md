@@ -1,30 +1,13 @@
 # Changelog
 
-## 0.5.3-beta.2
-
-### Features
-
-- **`--filter-title` / `--filter-title-block-id` 注入父级标题**：命中深层标题时，自动把所有更高层级的祖先标题（仅 heading 块本身）按文档顺序一并输出，保留章节层级上下文；顶级命中不注入，跳级不伪造中间层，旁支兄弟自动排除
-
-### Changed
-
-- **docx 表格输出改为 Markdown 管道格式**：原 `<table>` HTML 输出（包含 `rowspan` / `colspan`）改为标准 GFM 管道表格；合并单元格按「复制顶格值」策略展开，单元格内容自动转义 `|` 与换行；`Table` 与电子表格 `Sheet` 现使用同一 `renderMarkdownTable` 实现
-
-## 0.5.3-beta.1
-
-### Changed
-
-- **`--agent` 取值规范化**：CLI `--agent` 与环境变量 `LARK_DOCX2MD_AGENT` 显式接受 `stdout` 或 `local`；不带值的 `--agent` 仍等价于 `stdout`，但环境变量原 `true` 形式已不再支持，需改写为 `LARK_DOCX2MD_AGENT=stdout`
-- **`HeadingInfo` 结构精简**：导出的 `HeadingInfo` 仅保留 `blockId` / `level` / `text` 三个字段，移除 `index` 与 `path`；`get-titles` 输出与 `--filter-title` 错误清单同步收敛
-- **代码组织拆分**：将 `getTitles` / `buildTitleTree` 从 `converter.ts` 抽离至独立模块 `src/get-titles.ts`，URL 解析逻辑迁移至 `src/url.ts`
-
-## 0.5.3-beta.0
+## 0.5.3
 
 ### Features
 
 - **`--filter-title-block-id` 精确过滤**：新增 CLI 选项与 `ConvertOptions.filterTitleBlockId`，按 heading 块 id 严格匹配目标章节，彻底规避同名标题歧义；与 `--filter-title` 互斥
 - **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `yaml` / `yaml-tree` / `json` / `tree` / `text` 五种输出格式与 `--max-level` 限级；不支持 sheets
-- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `index` / `level` / `text` / `path`），`--filter-title` 未命中时错误信息改为与 `get-titles` 同形的 yaml 清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
+- **`--filter-title` / `--filter-title-block-id` 注入父级标题**：命中深层标题时，自动把所有更高层级的祖先标题（仅 heading 块本身）按文档顺序一并输出，保留章节层级上下文；顶级命中不注入，跳级不伪造中间层，旁支兄弟自动排除
+- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `level` / `text`），`--filter-title` 未命中时错误信息改为与 `get-titles` 同形的 yaml 清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
 
 ### Fixed
 
@@ -32,7 +15,10 @@
 
 ### Changed
 
+- **docx 表格输出改为 Markdown 管道格式**：原 `<table>` HTML 输出（包含 `rowspan` / `colspan`）改为标准 GFM 管道表格；合并单元格按「复制顶格值」策略展开，单元格内容自动转义 `|` 与换行；`Table` 与电子表格 `Sheet` 现使用同一 `renderMarkdownTable` 实现
+- **`--agent` 取值规范化**：CLI `--agent` 与环境变量 `LARK_DOCX2MD_AGENT` 显式接受 `stdout` 或 `local`；不带值的 `--agent` 仍等价于 `stdout`，但环境变量原 `true` 形式已不再支持，需改写为 `LARK_DOCX2MD_AGENT=stdout`
 - **请求限速放宽**：`getDocxBlocks` 分页间隔 100 → 50ms、图片下载间隔 600 → 300ms，大文档转换更快
+- **代码组织拆分**：将 `getTitles` / `buildTitleTree` 从 `converter.ts` 抽离至独立模块 `src/get-titles.ts`，URL 解析逻辑迁移至 `src/url.ts`
 - **SKILL 工作流升级**：`skills/lark-docx2md/SKILL.md` 指定标题场景改为「`get-titles` → 匹配 blockId → `dl --filter-title-block-id`」三步式，支持单标题、多级路径、同名同路径等多种消歧场景
 
 ## 0.5.2

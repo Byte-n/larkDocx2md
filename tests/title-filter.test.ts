@@ -236,6 +236,184 @@ describe('createTitleFilter', () => {
   });
 });
 
+// ─── createTitleFilter - ancestor injection ────────────────────────────────
+
+describe('createTitleFilter - ancestor injection', () => {
+  it('injects direct parent heading (heading-only) when matching a deeper heading', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'X' });
+
+    const blocks = [
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeTextBlock('a-text'),                  // 父级 A 的兄弟内容（不应注入）
+      makeHeadingBlock(2, 'B', 'h-b'),
+      makeTextBlock('b-text'),                  // 父级 B 的兄弟内容（不应注入）
+      makeHeadingBlock(3, 'X', 'h-x'),
+      makeTextBlock('x-content', ),
+    ];
+    pageHandler(blocks);
+    const result = getResult();
+
+    expect(result.matched).toBe(true);
+    // 祖先 A、B + 命中 X + X 的内容（注意 a-text、b-text 因不在 blockMap 中会被 Parser 跳过，
+    // 但本层 collected 不包含它们就足够保证「heading-only」语义）
+    expect(result.blocks.map(b => b.block_id)).toEqual([
+      'h-a', 'h-b', 'h-x', 'x-content',
+    ]);
+  });
+
+  it('injects multi-level ancestors in document order', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Deep' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'L1', 'h1'),
+      makeHeadingBlock(2, 'L2', 'h2'),
+      makeHeadingBlock(3, 'L3', 'h3'),
+      makeHeadingBlock(4, 'Deep', 'h-deep'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.blocks.map(b => b.block_id)).toEqual(['h1', 'h2', 'h3', 'h-deep']);
+  });
+
+  it('does not inject when match is top-level', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Top' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'Top', 'h-top'),
+      makeTextBlock('c1'),
+    ]);
+
+    const result = getResult();
+    expect(result.blocks.map(b => b.block_id)).toEqual(['h-top', 'c1']);
+  });
+
+  it('does not inject sibling headings that are not ancestors', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'X' });
+
+    // 旁支：## B 在遇到下一个 ## B2 时已被弹出，不应作为 ### X 的祖先
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'B', 'h-b'),
+      makeTextBlock('b-text'),
+      makeHeadingBlock(2, 'B2', 'h-b2'),
+      makeHeadingBlock(3, 'X', 'h-x'),
+      makeTextBlock('x-content'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.blocks.map(b => b.block_id)).toEqual([
+      'h-a', 'h-b2', 'h-x', 'x-content',
+    ]);
+    // 关键负断言：不能含有 h-b
+    expect(result.blocks.some(b => b.block_id === 'h-b')).toBe(false);
+  });
+
+  it('handles skipped levels (H1 → H3) without fabricating H2', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'Skip' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h1'),
+      makeHeadingBlock(3, 'Skip', 'h3'),
+      makeTextBlock('t'),
+    ]);
+
+    const result = getResult();
+    expect(result.blocks.map(b => b.block_id)).toEqual(['h1', 'h3', 't']);
+  });
+
+  it('keeps ancestor stack across multiple pageHandler calls (cross-page)', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'X' });
+
+    // Page 1：仅祖先
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'B', 'h-b'),
+    ]);
+    // Page 2：命中
+    pageHandler([
+      makeHeadingBlock(3, 'X', 'h-x'),
+      makeTextBlock('x-content'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.blocks.map(b => b.block_id)).toEqual([
+      'h-a', 'h-b', 'h-x', 'x-content',
+    ]);
+  });
+
+  it('availableHeadings is unaffected by ancestor injection', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'X' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'B', 'h-b'),
+      makeHeadingBlock(3, 'X', 'h-x'),
+      makeHeadingBlock(4, 'Child', 'h-child'), // collecting 阶段，不进 availableHeadings
+    ]);
+
+    const result = getResult();
+    expect(result.availableHeadings).toEqual([
+      { blockId: 'h-a', level: 1, text: 'A' },
+      { blockId: 'h-b', level: 2, text: 'B' },
+      { blockId: 'h-x', level: 3, text: 'X' },
+    ]);
+  });
+
+  it('keeps page block before injected ancestors', () => {
+    const { pageHandler, getResult } = createTitleFilter({ title: 'X' });
+
+    pageHandler([
+      makePageBlock('page'),
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'X', 'h-x'),
+      makeTextBlock('c'),
+    ]);
+
+    const result = getResult();
+    expect(result.blocks.map(b => b.block_id)).toEqual([
+      'page', 'h-a', 'h-x', 'c',
+    ]);
+  });
+});
+
+// ─── createTitleBlockIdFilter - ancestor injection ─────────────────────────
+
+describe('createTitleBlockIdFilter - ancestor injection', () => {
+  it('injects multi-level ancestors when matching by block id', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h-x' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'B', 'h-b'),
+      makeHeadingBlock(3, 'Same', 'h-x'),
+      makeTextBlock('c'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.blocks.map(b => b.block_id)).toEqual(['h-a', 'h-b', 'h-x', 'c']);
+  });
+
+  it('does not inject sibling headings that are not ancestors', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h-x' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h-a'),
+      makeHeadingBlock(2, 'B', 'h-b'),
+      makeHeadingBlock(2, 'B2', 'h-b2'),
+      makeHeadingBlock(3, 'X', 'h-x'),
+      makeTextBlock('c'),
+    ]);
+
+    const result = getResult();
+    expect(result.blocks.map(b => b.block_id)).toEqual(['h-a', 'h-b2', 'h-x', 'c']);
+    expect(result.blocks.some(b => b.block_id === 'h-b')).toBe(false);
+  });
+});
+
 // ─── createTitleBlockIdFilter ────────────────────────────────────────────────
 
 describe('createTitleBlockIdFilter', () => {

@@ -72,13 +72,21 @@ function toHeadingInfo (block: DocxBlock): HeadingInfo | null {
 
 // ─── 公共骨架 ──────────────────────────────────────────────────────────────
 
+/** 祖先栈条目：扫描期维护的「严格递增 level」标题链。 */
+interface HeadingStackEntry {
+  info: HeadingInfo;
+  block: DocxBlock;
+}
+
 /**
  * 通用 heading 过滤器骨架：扫描 → 命中 → 收集 → 终止 状态机。
  * 调用方仅需提供 `match(block, info)` 谓词决定何时进入 collecting。
  *
  * 复用要点：
  * - page 节点（block_type=1）始终保留
- * - scanning 阶段把所有 heading 推入 availableHeadings
+ * - scanning 阶段把所有 heading 推入 availableHeadings，并以栈式回溯维护祖先链
+ * - 命中时把祖先 heading（level < 命中 level）按文档顺序注入 collected，
+ *   作为「仅标题」上下文（heading 的非命中兄弟内容不在 blockMap 中，Parser 会自动跳过）
  * - collecting 阶段遇到同级或更高级标题终止
  */
 function createHeadingMatchFilter (
@@ -88,6 +96,8 @@ function createHeadingMatchFilter (
   let matchedLevel = 0;
   const collected: DocxBlock[] = [];
   const seen: HeadingInfo[] = [];
+  // 扫描期祖先栈：始终保持栈内 level 严格递增（与 buildTitleTree 的栈式回溯一致）
+  const ancestorStack: HeadingStackEntry[] = [];
 
   function pageHandler (blocks: DocxBlock[]): boolean {
     for (const block of blocks) {
@@ -100,11 +110,24 @@ function createHeadingMatchFilter (
         case 'scanning': {
           const info = toHeadingInfo(block);
           if (info) {
+            // 栈式回溯：弹出所有 level >= 当前的旧条目，保证栈内即为「祖先链」
+            while (
+              ancestorStack.length > 0
+              && ancestorStack[ancestorStack.length - 1]!.info.level >= info.level
+            ) {
+              ancestorStack.pop();
+            }
             seen.push(info);
             if (match(block, info)) {
+              // 命中：按文档顺序注入祖先 heading（仅 heading block 本身）
+              for (const entry of ancestorStack) {
+                collected.push(entry.block);
+              }
               state = 'collecting';
               matchedLevel = info.level;
               collected.push(block);
+            } else {
+              ancestorStack.push({ info, block });
             }
           }
           break;

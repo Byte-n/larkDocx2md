@@ -84,10 +84,10 @@ describe('MdTransformer - image resolution (online)', () => {
     expect(batchFn).toHaveBeenCalledTimes(3); // 12 tokens / 5 = 3 batches (5,5,2)
   });
 
-  it('agent=true forces online mode', async () => {
+  it('agent=stdout forces online mode', async () => {
     const batchFn = vi.fn().mockResolvedValue({ T: 'https://cdn/t' });
     const client = mockClient({ batchGetTmpDownloadUrl: batchFn } as any);
-    const tr = new MdTransformer(client, makeOpts({ imageMode: 'local', agent: true }));
+    const tr = new MdTransformer(client, makeOpts({ imageMode: 'local', agent: 'stdout' }));
     const ast: MdBlockNode = {
       type: 'page', title: [],
       children: [{ type: 'image', alt: '', src: 'T' }],

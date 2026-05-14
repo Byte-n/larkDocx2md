@@ -47,7 +47,7 @@ export class MdTransformer {
     const uniqueTokens = [...new Set(tokens)];
     if (uniqueTokens.length === 0) return map;
 
-    if (this.opts.imageMode === 'online' || this.opts.agent === true) {
+    if (this.opts.imageMode === 'online' || this.opts.agent === 'stdout') {
       for (let i = 0; i < uniqueTokens.length; i += 5) {
         const batch = uniqueTokens.slice(i, i + 5);
         const urlMap = await this.client.batchGetTmpDownloadUrl(batch);

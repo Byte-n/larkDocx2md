@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { buildTitleTree, formatTitlesAsText, parseWikiUrl } from '../src/converter.js';
+import { parseWikiUrl } from '../src/converter.js';
+import { buildTitleTree } from '../src/get-titles.js';
 import type { HeadingInfo } from '../src/title-filter.js';
 
 describe('parseWikiUrl', () => {
@@ -46,17 +47,17 @@ describe('parseWikiUrl', () => {
 
 // ─── buildTitleTree ──────────────────────────────────────────────────────────────────────────
 
-function h (blockId: string, index: number, level: number, text: string, path: string[]): HeadingInfo {
-  return { blockId, index, level, text, path };
+function h (blockId: string, level: number, text: string): HeadingInfo {
+  return { blockId, level, text };
 }
 
 describe('buildTitleTree', () => {
   it('builds tree from flat headings using level', () => {
     const flat: HeadingInfo[] = [
-      h('h1', 1, 1, 'A', ['A']),
-      h('h2', 2, 2, 'A.1', ['A', 'A.1']),
-      h('h3', 3, 2, 'A.2', ['A', 'A.2']),
-      h('h4', 4, 1, 'B', ['B']),
+      h('h1', 1, 'A'),
+      h('h2', 2, 'A.1'),
+      h('h3', 2, 'A.2'),
+      h('h4', 1, 'B'),
     ];
     const tree = buildTitleTree(flat);
     expect(tree).toHaveLength(2);
@@ -69,8 +70,8 @@ describe('buildTitleTree', () => {
 
   it('handles skipped levels by attaching to nearest higher-level ancestor', () => {
     const flat: HeadingInfo[] = [
-      h('h1', 1, 1, 'A', ['A']),
-      h('h3', 2, 3, 'C', ['A', 'C']), // 跳过 H2，C 仍作为 A 的子节点
+      h('h1', 1, 'A'),
+      h('h3', 3, 'C'), // 跳过 H2，C 仍作为 A 的子节点
     ];
     const tree = buildTitleTree(flat);
     expect(tree).toHaveLength(1);
@@ -84,29 +85,10 @@ describe('buildTitleTree', () => {
 
   it('multiple roots when first heading is not the lowest level', () => {
     const flat: HeadingInfo[] = [
-      h('h2', 1, 2, 'X', ['X']),
-      h('h2b', 2, 2, 'Y', ['Y']),
+      h('h2', 2, 'X'),
+      h('h2b', 2, 'Y'),
     ];
     const tree = buildTitleTree(flat);
     expect(tree).toHaveLength(2);
-  });
-});
-
-// ─── formatTitlesAsText ───────────────────────────────────────────────────────────────
-
-describe('formatTitlesAsText', () => {
-  it('renders headings with markdown # prefix and indentation by level', () => {
-    const flat: HeadingInfo[] = [
-      h('h1', 1, 1, 'A', ['A']),
-      h('h2', 2, 2, 'A.1', ['A', 'A.1']),
-      h('h3', 3, 3, 'A.1.1', ['A', 'A.1', 'A.1.1']),
-    ];
-    expect(formatTitlesAsText(flat)).toBe(
-      '# A\n  ## A.1\n    ### A.1.1',
-    );
-  });
-
-  it('returns empty string for empty input', () => {
-    expect(formatTitlesAsText([])).toBe('');
   });
 });

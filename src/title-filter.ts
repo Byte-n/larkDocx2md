@@ -20,18 +20,14 @@ export interface TitleFilterResult {
   availableHeadings: HeadingInfo[];
 }
 
-/** 单条标题信息（扁平形式）。 */
+/** 单条标题信息（扁平形式）。多级路径/同名兄弟由上层 buildTitleTree 生成的嵌套结构隐含。 */
 export interface HeadingInfo {
   /** 飞书块 id（最稳定锚点） */
   blockId: string;
-  /** 在文档中按出现顺序的 1-based 序号 */
-  index: number;
   /** 标题级别 1~9 */
   level: number;
   /** 标题文本（trim 后） */
   text: string;
-  /** 从根到当前节点的标题文本链（含自身），按栈式回溯生成，可正确处理跳级标题 */
-  path: string[];
 }
 
 /**
@@ -62,48 +58,36 @@ export function extractHeadingText (block: DocxBlock): string | null {
 }
 
 /**
- * 内部工具：维护标题祖先栈与 1-based 序号，将一个 heading block 转为 HeadingInfo。
- * 传入非 heading block 返回 null，不改变内部状态。
+ * 将 heading block 转为 HeadingInfo；非 heading 返回 null。纯函数，无状态。
  */
-function createHeadingTracker (): {
-  push: (block: DocxBlock) => HeadingInfo | null;
-} {
-  const stack: Array<{ level: number; text: string }> = [];
-  let counter = 0;
-  function push (block: DocxBlock): HeadingInfo | null {
-    const level = getHeadingLevel(block);
-    if (level === null) return null;
-    const text = extractHeadingText(block) ?? '';
-    while (stack.length > 0 && stack[stack.length - 1]!.level >= level) stack.pop();
-    stack.push({ level, text });
-    counter += 1;
-    return {
-      blockId: block.block_id ?? '',
-      index: counter,
-      level,
-      text,
-      path: stack.map(s => s.text),
-    };
-  }
-  return { push };
+function toHeadingInfo (block: DocxBlock): HeadingInfo | null {
+  const level = getHeadingLevel(block);
+  if (level === null) return null;
+  return {
+    blockId: block.block_id ?? '',
+    level,
+    text: extractHeadingText(block) ?? '',
+  };
 }
 
+// ─── 公共骨架 ──────────────────────────────────────────────────────────────
+
 /**
- * 创建标题过滤器，返回一个 pageHandler 兼容的回调和结果获取器。
- * 纯函数工厂，无副作用，易于测试。
+ * 通用 heading 过滤器骨架：扫描 → 命中 → 收集 → 终止 状态机。
+ * 调用方仅需提供 `match(block, info)` 谓词决定何时进入 collecting。
+ *
+ * 复用要点：
+ * - page 节点（block_type=1）始终保留
+ * - scanning 阶段把所有 heading 推入 availableHeadings
+ * - collecting 阶段遇到同级或更高级标题终止
  */
-export function createTitleFilter (options: TitleFilterOptions): {
-  /** 传入 getDocxBlocks 的 pageHandler */
-  pageHandler: (blocks: DocxBlock[]) => boolean;
-  /** 获取最终结果 */
-  getResult: () => TitleFilterResult;
-} {
-  const targetTitle = options.title.trim();
+function createHeadingMatchFilter (
+  match: (block: DocxBlock, info: HeadingInfo) => boolean,
+): { pageHandler: (blocks: DocxBlock[]) => boolean; getResult: () => TitleFilterResult } {
   let state: FilterState = 'scanning';
   let matchedLevel = 0;
   const collected: DocxBlock[] = [];
-  const seenHeadings: HeadingInfo[] = [];
-  const tracker = createHeadingTracker();
+  const seen: HeadingInfo[] = [];
 
   function pageHandler (blocks: DocxBlock[]): boolean {
     for (const block of blocks) {
@@ -114,10 +98,10 @@ export function createTitleFilter (options: TitleFilterOptions): {
       }
       switch (state) {
         case 'scanning': {
-          const info = tracker.push(block);
+          const info = toHeadingInfo(block);
           if (info) {
-            seenHeadings.push(info);
-            if (info.text === targetTitle) {
+            seen.push(info);
+            if (match(block, info)) {
               state = 'collecting';
               matchedLevel = info.level;
               collected.push(block);
@@ -145,12 +129,23 @@ export function createTitleFilter (options: TitleFilterOptions): {
   function getResult (): TitleFilterResult {
     return {
       blocks: [...collected],
-      matched: state === 'collecting' || state === 'done',
-      availableHeadings: [...seenHeadings],
+      matched: state !== 'scanning',
+      availableHeadings: [...seen],
     };
   }
 
   return { pageHandler, getResult };
+}
+
+/**
+ * 按标题文本过滤（首个匹配生效；若有同名标题，请改用 createTitleBlockIdFilter）。
+ */
+export function createTitleFilter (options: TitleFilterOptions): {
+  pageHandler: (blocks: DocxBlock[]) => boolean;
+  getResult: () => TitleFilterResult;
+} {
+  const target = options.title.trim();
+  return createHeadingMatchFilter((_block, info) => info.text === target);
 }
 
 /**
@@ -162,56 +157,8 @@ export function createTitleBlockIdFilter (options: { blockId: string }): {
   getResult: () => TitleFilterResult;
 } {
   const target = options.blockId.trim();
-  let state: FilterState = 'scanning';
-  let matchedLevel = 0;
-  const collected: DocxBlock[] = [];
-  const seen: HeadingInfo[] = [];
-  const tracker = createHeadingTracker();
-
-  function pageHandler (blocks: DocxBlock[]): boolean {
-    for (const block of blocks) {
-      if (block.block_type === 1) {
-        collected.push(block);
-        continue;
-      }
-      switch (state) {
-        case 'scanning': {
-          const info = tracker.push(block);
-          if (info) {
-            seen.push(info);
-            if (block.block_id === target) {
-              state = 'collecting';
-              matchedLevel = info.level;
-              collected.push(block);
-            }
-          }
-          break;
-        }
-        case 'collecting': {
-          const level = getHeadingLevel(block);
-          if (level !== null && level <= matchedLevel) {
-            state = 'done';
-            return false;
-          }
-          collected.push(block);
-          break;
-        }
-        case 'done':
-          return false;
-      }
-    }
-    return state !== 'done';
-  }
-
-  function getResult (): TitleFilterResult {
-    return {
-      blocks: [...collected],
-      matched: state === 'collecting' || state === 'done',
-      availableHeadings: [...seen],
-    };
-  }
-
-  return { pageHandler, getResult };
+  // info 非 null 已在骨架中保证（仅 heading 才会进入 match），block.block_id 比较即可
+  return createHeadingMatchFilter(block => block.block_id === target);
 }
 
 /**
@@ -223,11 +170,10 @@ export function createHeadingCollector (): {
   getHeadings: () => HeadingInfo[];
 } {
   const headings: HeadingInfo[] = [];
-  const tracker = createHeadingTracker();
 
   function pageHandler (blocks: DocxBlock[]): boolean {
     for (const block of blocks) {
-      const info = tracker.push(block);
+      const info = toHeadingInfo(block);
       if (info) headings.push(info);
     }
     return true;

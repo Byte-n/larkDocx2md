@@ -34,13 +34,12 @@ npx -y lark-docx2md@latest dl --agent local "<url>"
 1. 取标题表：
 
    ```bash
-   npx -y lark-docx2md@latest get-titles --agent "<url>"
+   npx -y lark-docx2md@latest get-titles --agent local "<url>"
    ```
 
 2. 匹配标题并获取 `blockId`：
-   - 单标题：找 `text === <title>`。唯一直接用；多候选用上下文（父级关键词）消歧。
-   - 多级路径：匹配 `path` 后缀与目标路径逐项相等的节点；仅 `text` 一致而 `path` 不符 → 不命中。
-   - 同名同 `path`（同父级兄弟重名）：按 `index` 升序列出全部候选并附上下文提示回问用户选择。
+   - 单标题：找 `text === <title>`。唯一直接用；多候选用上下文（父节点关键词）消歧。
+   - 同父级同名兄弟：按同父节点下 children 的出现顺序列出全部候选，附上下文提示回问用户选择。
    - 无候选：报告并展示可用标题。
 
 3. 用 `blockId` 下载：

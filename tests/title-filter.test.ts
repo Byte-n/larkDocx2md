@@ -173,11 +173,11 @@ describe('createTitleFilter', () => {
     const result = getResult();
     expect(result.matched).toBe(false);
     expect(result.availableHeadings).toEqual([
-      { blockId: 'blk', index: 1, level: 1, text: 'Intro', path: ['Intro'] },
-      { blockId: 'blk', index: 2, level: 2, text: 'Section A', path: ['Intro', 'Section A'] },
-      { blockId: 'blk', index: 3, level: 3, text: 'Section A', path: ['Intro', 'Section A', 'Section A'] },
-      { blockId: 'blk', index: 4, level: 2, text: 'Section A', path: ['Intro', 'Section A'] },
-      { blockId: 'blk', index: 5, level: 1, text: 'Outro', path: ['Outro'] },
+      { blockId: 'blk', level: 1, text: 'Intro' },
+      { blockId: 'blk', level: 2, text: 'Section A' },
+      { blockId: 'blk', level: 3, text: 'Section A' },
+      { blockId: 'blk', level: 2, text: 'Section A' },
+      { blockId: 'blk', level: 1, text: 'Outro' },
     ]);
   });
 
@@ -194,8 +194,8 @@ describe('createTitleFilter', () => {
     const result = getResult();
     expect(result.matched).toBe(true);
     expect(result.availableHeadings).toEqual([
-      { blockId: 'blk', index: 1, level: 1, text: 'Before', path: ['Before'] },
-      { blockId: 'blk', index: 2, level: 2, text: 'Target', path: ['Before', 'Target'] },
+      { blockId: 'blk', level: 1, text: 'Before' },
+      { blockId: 'blk', level: 2, text: 'Target' },
     ]);
   });
 
@@ -294,21 +294,21 @@ describe('createTitleBlockIdFilter', () => {
     expect(pageHandler([makeTextBlock()])).toBe(false);
   });
 
-  it('availableHeadings on miss carries blockId/index/path (yaml-shape)', () => {
+  it('availableHeadings on miss carries blockId/level/text (yaml-shape)', () => {
     const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'never' });
 
     pageHandler([
       makeHeadingBlock(1, 'A', 'h1'),
       makeHeadingBlock(2, 'B', 'h2'),
-      makeHeadingBlock(2, 'B', 'h3'), // 同名同父级，path 与上条相同
+      makeHeadingBlock(2, 'B', 'h3'), // 同名同父级
     ]);
 
     const result = getResult();
     expect(result.matched).toBe(false);
     expect(result.availableHeadings).toEqual([
-      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
-      { blockId: 'h2', index: 2, level: 2, text: 'B', path: ['A', 'B'] },
-      { blockId: 'h3', index: 3, level: 2, text: 'B', path: ['A', 'B'] },
+      { blockId: 'h1', level: 1, text: 'A' },
+      { blockId: 'h2', level: 2, text: 'B' },
+      { blockId: 'h3', level: 2, text: 'B' },
     ]);
   });
 
@@ -341,7 +341,7 @@ describe('createTitleBlockIdFilter', () => {
 // ─── createHeadingCollector ──────────────────────────────────────────────────
 
 describe('createHeadingCollector', () => {
-  it('collects flat HeadingInfo with stack-based path and 1-based index', () => {
+  it('collects flat HeadingInfo (blockId/level/text)', () => {
     const { pageHandler, getHeadings } = createHeadingCollector();
 
     pageHandler([
@@ -354,10 +354,10 @@ describe('createHeadingCollector', () => {
     ]);
 
     expect(getHeadings()).toEqual([
-      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
-      { blockId: 'h2', index: 2, level: 2, text: 'A.1', path: ['A', 'A.1'] },
-      { blockId: 'h3', index: 3, level: 2, text: 'A.2', path: ['A', 'A.2'] },
-      { blockId: 'h4', index: 4, level: 1, text: 'B', path: ['B'] },
+      { blockId: 'h1', level: 1, text: 'A' },
+      { blockId: 'h2', level: 2, text: 'A.1' },
+      { blockId: 'h3', level: 2, text: 'A.2' },
+      { blockId: 'h4', level: 1, text: 'B' },
     ]);
   });
 
@@ -366,14 +366,14 @@ describe('createHeadingCollector', () => {
 
     pageHandler([
       makeHeadingBlock(1, 'A', 'h1'),
-      makeHeadingBlock(3, 'C', 'h3'), // 跳过 H2，path 仍应为 [A, C]
-      makeHeadingBlock(2, 'B', 'h2'), // 返回 H2，应从 A pop 到 仅剩 A，path=[A, B]
+      makeHeadingBlock(3, 'C', 'h3'),
+      makeHeadingBlock(2, 'B', 'h2'),
     ]);
 
     expect(getHeadings()).toEqual([
-      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
-      { blockId: 'h3', index: 2, level: 3, text: 'C', path: ['A', 'C'] },
-      { blockId: 'h2', index: 3, level: 2, text: 'B', path: ['A', 'B'] },
+      { blockId: 'h1', level: 1, text: 'A' },
+      { blockId: 'h3', level: 3, text: 'C' },
+      { blockId: 'h2', level: 2, text: 'B' },
     ]);
   });
 
@@ -389,15 +389,15 @@ describe('createHeadingCollector', () => {
     expect(pageHandler([])).toBe(true);
   });
 
-  it('accumulates across multiple page calls with continuous index', () => {
+  it('accumulates across multiple page calls', () => {
     const { pageHandler, getHeadings } = createHeadingCollector();
 
     pageHandler([makeHeadingBlock(1, 'A', 'h1'), makeHeadingBlock(2, 'A.1', 'h2')]);
     pageHandler([makeHeadingBlock(1, 'B', 'h3')]);
 
-    expect(getHeadings().map(h => h.index)).toEqual([1, 2, 3]);
+    expect(getHeadings()).toHaveLength(3);
     expect(getHeadings()[2]).toEqual({
-      blockId: 'h3', index: 3, level: 1, text: 'B', path: ['B'],
+      blockId: 'h3', level: 1, text: 'B',
     });
   });
 

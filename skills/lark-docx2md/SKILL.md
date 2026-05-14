@@ -54,4 +54,4 @@ npx -y lark-docx2md@latest dl --agent local "<url>"
 
 ## 约束
 
-- `dl` 必须带 `--agent local`；`get-titles` 必须带 `--agent`。
+- `dl` 必须带 `--agent local`；`get-titles` 必须带 `--agent local`。

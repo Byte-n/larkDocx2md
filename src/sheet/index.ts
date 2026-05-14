@@ -21,6 +21,8 @@ export interface ResolvedSheet {
 
 const escapeCell = (s: string) => s.replace(/\|/g, '\\|').replace(/\n/g, '<br>');
 
+export { escapeCell };
+
 export function cellToMd (cell: unknown): string {
   if (cell == null) return '';
   if (typeof cell !== 'object') return escapeCell(String(cell));
@@ -103,4 +105,20 @@ export function columnIndexToLetter (n: number): string {
     n = Math.floor(n / 26);
   }
   return result;
+}
+
+// ─── renderMarkdownTable: 二维字符串 → Markdown 管道表格 ──────────────────
+//
+// 首行作为表头，其余为表体；空表输出占位文案。调用方负责对单元格内容做
+// `escapeCell` 转义与合并展开。
+
+export function renderMarkdownTable (rows: string[][]): string {
+  if (!rows.length) return '_（空表）_\n\n';
+  const [head, ...body] = rows;
+  if (!head || head.length === 0) return '_（空表）_\n\n';
+  let out = `| ${head.join(' | ')} |\n`;
+  out += `| ${head.map(() => '---').join(' | ')} |\n`;
+  for (const r of body) out += `| ${r.join(' | ')} |\n`;
+  out += '\n';
+  return out;
 }

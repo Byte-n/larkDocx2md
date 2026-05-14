@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter } from '../../src/sheet/index.js';
+import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter, renderMarkdownTable, escapeCell } from '../../src/sheet/index.js';
 
 // ─── cellToMd ───────────────────────────────────────────────────────────────
 
@@ -133,5 +133,49 @@ describe('columnIndexToLetter', () => {
 
   it('returns empty string for 0', () => {
     expect(columnIndexToLetter(0)).toBe('');
+  });
+});
+
+// ─── escapeCell ───────────────────────────────────────────────────
+
+describe('escapeCell', () => {
+  it('escapes pipe characters', () => {
+    expect(escapeCell('a|b|c')).toBe('a\\|b\\|c');
+  });
+
+  it('converts newline to <br>', () => {
+    expect(escapeCell('a\nb')).toBe('a<br>b');
+  });
+
+  it('leaves plain text unchanged', () => {
+    expect(escapeCell('hello world')).toBe('hello world');
+  });
+});
+
+// ─── renderMarkdownTable ────────────────────────────────────────────
+
+describe('renderMarkdownTable', () => {
+  it('outputs placeholder for empty grid', () => {
+    expect(renderMarkdownTable([])).toBe('_（空表）_\n\n');
+    expect(renderMarkdownTable([[]])).toBe('_（空表）_\n\n');
+  });
+
+  it('renders header + body', () => {
+    const result = renderMarkdownTable([
+      ['h1', 'h2'],
+      ['a', 'b'],
+      ['c', 'd'],
+    ]);
+    expect(result).toContain('| h1 | h2 |');
+    expect(result).toContain('| --- | --- |');
+    expect(result).toContain('| a | b |');
+    expect(result).toContain('| c | d |');
+    expect(result.endsWith('\n\n')).toBe(true);
+  });
+
+  it('renders header-only table', () => {
+    const result = renderMarkdownTable([['h1', 'h2']]);
+    expect(result).toContain('| h1 | h2 |');
+    expect(result).toContain('| --- | --- |');
   });
 });

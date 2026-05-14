@@ -124,7 +124,7 @@ describe('MdSerializer', () => {
   });
 
   describe('table', () => {
-    it('serializes as HTML table', () => {
+    it('serializes as Markdown pipe table', () => {
       const node: MdBlockNode = {
         type: 'table',
         rows: [
@@ -133,19 +133,40 @@ describe('MdSerializer', () => {
         ],
       };
       const result = s.serialize(node);
-      expect(result).toContain('<table>');
-      expect(result).toContain('<td>A</td>');
-      expect(result).toContain('</table>');
+      expect(result).toContain('| A | B |');
+      expect(result).toContain('| --- | --- |');
+      expect(result).toContain('| C | D |');
+      expect(result).not.toContain('<table>');
+      expect(result).not.toContain('<td>');
     });
 
-    it('serializes colspan/rowspan', () => {
+    it('expands colspan/rowspan by duplicating the top-left value', () => {
+      // 3x3 grid with top-left cell merged as 2x2
       const node: MdBlockNode = {
         type: 'table',
-        rows: [{ cells: [{ content: [text('X')], colSpan: 2, rowSpan: 3 }] }],
+        rows: [
+          { cells: [{ content: [text('X')], rowSpan: 2, colSpan: 2 }, { content: [text('c')] }] },
+          { cells: [{ content: [text('f')] }] },
+          { cells: [{ content: [text('g')] }, { content: [text('h')] }, { content: [text('i')] }] },
+        ],
       };
       const result = s.serialize(node);
-      expect(result).toContain('rowspan="3"');
-      expect(result).toContain('colspan="2"');
+      expect(result).toContain('| X | X | c |');
+      expect(result).toContain('| X | X | f |');
+      expect(result).toContain('| g | h | i |');
+    });
+
+    it('escapes pipe and converts inline marks', () => {
+      const node: MdBlockNode = {
+        type: 'table',
+        rows: [
+          { cells: [{ content: [text('a|b')] }, { content: [bold('B')] }] },
+          { cells: [{ content: [text('c')] }, { content: [link('d', 'http://x')] }] },
+        ],
+      };
+      const result = s.serialize(node);
+      expect(result).toContain('| a\\|b | **B** |');
+      expect(result).toContain('| c | [d](http://x) |');
     });
   });
 

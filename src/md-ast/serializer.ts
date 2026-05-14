@@ -1,6 +1,7 @@
 import { Registry } from '../core/registry.js';
+import { escapeCell, renderMarkdownTable } from '../sheet/index.js';
 import type { DocSourceType } from './transformer.js';
-import type { MdBlockNode, MdInlineNode } from './types.js';
+import type { MdBlockNode, MdInlineNode, MdTableRow } from './types.js';
 
 export interface NodeSerializer {
   type: string;
@@ -221,22 +222,46 @@ const tableSerializer: NodeSerializer = {
   type: 'table',
   serialize (node, ctx) {
     if (node.type !== 'table') return '';
-    let buf = '<table>\n';
-    for (const row of node.rows) {
-      buf += '<tr>\n';
-      for (const cell of row.cells) {
-        let attrs = '';
-        if (cell.rowSpan && cell.rowSpan > 1) attrs += ` rowspan="${cell.rowSpan}"`;
-        if (cell.colSpan && cell.colSpan > 1) attrs += ` colspan="${cell.colSpan}"`;
-        const content = ctx.serializeInline(cell.content);
-        buf += `<td${attrs}>${content}</td>`;
-      }
-      buf += '</tr>\n';
-    }
-    buf += '</table>\n';
-    return buf;
+    const grid = rebuildGrid(node.rows, ctx);
+    return renderMarkdownTable(grid);
   },
 };
+
+/**
+ * 基于 parser 产出的稀疏 rows（被合并覆盖的格已被过滤，顶格包含 rowSpan/colSpan）
+ * 还原为稠密二维字符串网格：Markdown 不支持合并，按"复制左上角值"展开。
+ */
+function rebuildGrid (rows: MdTableRow[], ctx: SerializeContext): string[][] {
+  const occupied = new Set<string>();
+  const grid: string[][] = [];
+  for (let r = 0; r < rows.length; r++) {
+    if (!grid[r]) grid[r] = [];
+    let c = 0;
+    for (const cell of rows[r]!.cells) {
+      while (occupied.has(`${r}-${c}`)) c++;
+      const raw = ctx.serializeInline(cell.content);
+      const value = escapeCell(raw);
+      const rs = cell.rowSpan ?? 1;
+      const cs = cell.colSpan ?? 1;
+      for (let rr = r; rr < r + rs; rr++) {
+        if (!grid[rr]) grid[rr] = [];
+        for (let cc = c; cc < c + cs; cc++) {
+          grid[rr]![cc] = value;
+          if (rr !== r || cc !== c) occupied.add(`${rr}-${cc}`);
+        }
+      }
+      c += cs;
+    }
+  }
+  // 补齐列宽：避免稀疏数组导致 join 出 undefined
+  const maxCols = grid.reduce((m, row) => Math.max(m, row.length), 0);
+  for (const row of grid) {
+    for (let i = 0; i < maxCols; i++) {
+      if (row[i] === undefined) row[i] = '';
+    }
+  }
+  return grid;
+}
 
 const gridSerializer: NodeSerializer = {
   type: 'grid',
@@ -264,13 +289,7 @@ const sheetResolvedSerializer: NodeSerializer = {
         out += `## ${node.title}-${s.title}\n\n`;
       }
       if (s.error) { out += `> ${s.error}\n\n`; continue; }
-      if (!s.rows.length) { out += '_（空表）_\n\n'; continue; }
-      const [head, ...body] = s.rows;
-      if (!head) { out += '_（空表）_\n\n'; continue; }
-      out += `| ${head.join(' | ')} |\n`;
-      out += `| ${head.map(() => '---').join(' | ')} |\n`;
-      for (const r of body) out += `| ${r.join(' | ')} |\n`;
-      out += '\n';
+      out += renderMarkdownTable(s.rows);
     }
     return out;
   },

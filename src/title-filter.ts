@@ -15,8 +15,19 @@ export interface TitleFilterResult {
   blocks: DocxBlock[];
   /** 是否已找到匹配 */
   matched: boolean;
-  /** 扫描期间遇到的所有 heading（按出现顺序，不去重；仅 scanning 阶段收集） */
-  availableHeadings: Array<{ level: number; text: string }>;
+  /** 扫描期间遇到的所有 heading（按出现顺序，不去重；仅 scanning 阶段收集）。
+   *  未匹配时扫描会走完整份文档，此列表与 get-titles 输出同形。 */
+  availableHeadings: HeadingInfo[];
+}
+
+/** 单条标题信息（扁平形式）。多级路径/同名兄弟由上层 buildTitleTree 生成的嵌套结构隐含。 */
+export interface HeadingInfo {
+  /** 飞书块 id（最稳定锚点） */
+  blockId: string;
+  /** 标题级别 1~9 */
+  level: number;
+  /** 标题文本（trim 后） */
+  text: string;
 }
 
 /**
@@ -47,20 +58,46 @@ export function extractHeadingText (block: DocxBlock): string | null {
 }
 
 /**
- * 创建标题过滤器，返回一个 pageHandler 兼容的回调和结果获取器。
- * 纯函数工厂，无副作用，易于测试。
+ * 将 heading block 转为 HeadingInfo；非 heading 返回 null。纯函数，无状态。
  */
-export function createTitleFilter (options: TitleFilterOptions): {
-  /** 传入 getDocxBlocks 的 pageHandler */
-  pageHandler: (blocks: DocxBlock[]) => boolean;
-  /** 获取最终结果 */
-  getResult: () => TitleFilterResult;
-} {
-  const targetTitle = options.title.trim();
+function toHeadingInfo (block: DocxBlock): HeadingInfo | null {
+  const level = getHeadingLevel(block);
+  if (level === null) return null;
+  return {
+    blockId: block.block_id ?? '',
+    level,
+    text: extractHeadingText(block) ?? '',
+  };
+}
+
+// ─── 公共骨架 ──────────────────────────────────────────────────────────────
+
+/** 祖先栈条目：扫描期维护的「严格递增 level」标题链。 */
+interface HeadingStackEntry {
+  info: HeadingInfo;
+  block: DocxBlock;
+}
+
+/**
+ * 通用 heading 过滤器骨架：扫描 → 命中 → 收集 → 终止 状态机。
+ * 调用方仅需提供 `match(block, info)` 谓词决定何时进入 collecting。
+ *
+ * 复用要点：
+ * - page 节点（block_type=1）始终保留
+ * - scanning 阶段把所有 heading 推入 availableHeadings，并以栈式回溯维护祖先链
+ * - 命中时把祖先 heading（level < 命中 level）按文档顺序注入 collected，
+ *   作为「仅标题」上下文（heading 的非命中兄弟内容不在 blockMap 中，Parser 会自动跳过）
+ * - collecting 阶段遇到同级或更高级标题终止
+ */
+function createHeadingMatchFilter (
+  match: (block: DocxBlock, info: HeadingInfo) => boolean,
+): { pageHandler: (blocks: DocxBlock[]) => boolean; getResult: () => TitleFilterResult } {
   let state: FilterState = 'scanning';
   let matchedLevel = 0;
   const collected: DocxBlock[] = [];
-  const seenHeadings: Array<{ level: number; text: string }> = [];
+  const seen: HeadingInfo[] = [];
+  // 扫描期祖先栈：始终保持栈内 level 严格递增（与 buildTitleTree 的栈式回溯一致）
+  const ancestorStack: HeadingStackEntry[] = [];
 
   function pageHandler (blocks: DocxBlock[]): boolean {
     for (const block of blocks) {
@@ -71,15 +108,26 @@ export function createTitleFilter (options: TitleFilterOptions): {
       }
       switch (state) {
         case 'scanning': {
-          const level = getHeadingLevel(block);
-          if (level !== null) {
-            const text = extractHeadingText(block) ?? '';
-            // 记录扫描到的所有标题（不去重、按出现顺序），用于未匹配时给出可用标题列表
-            seenHeadings.push({ level, text });
-            if (text === targetTitle) {
+          const info = toHeadingInfo(block);
+          if (info) {
+            // 栈式回溯：弹出所有 level >= 当前的旧条目，保证栈内即为「祖先链」
+            while (
+              ancestorStack.length > 0
+              && ancestorStack[ancestorStack.length - 1]!.info.level >= info.level
+            ) {
+              ancestorStack.pop();
+            }
+            seen.push(info);
+            if (match(block, info)) {
+              // 命中：按文档顺序注入祖先 heading（仅 heading block 本身）
+              for (const entry of ancestorStack) {
+                collected.push(entry.block);
+              }
               state = 'collecting';
-              matchedLevel = level;
+              matchedLevel = info.level;
               collected.push(block);
+            } else {
+              ancestorStack.push({ info, block });
             }
           }
           break;
@@ -104,10 +152,55 @@ export function createTitleFilter (options: TitleFilterOptions): {
   function getResult (): TitleFilterResult {
     return {
       blocks: [...collected],
-      matched: state === 'collecting' || state === 'done',
-      availableHeadings: [...seenHeadings],
+      matched: state !== 'scanning',
+      availableHeadings: [...seen],
     };
   }
 
   return { pageHandler, getResult };
+}
+
+/**
+ * 按标题文本过滤（首个匹配生效；若有同名标题，请改用 createTitleBlockIdFilter）。
+ */
+export function createTitleFilter (options: TitleFilterOptions): {
+  pageHandler: (blocks: DocxBlock[]) => boolean;
+  getResult: () => TitleFilterResult;
+} {
+  const target = options.title.trim();
+  return createHeadingMatchFilter((_block, info) => info.text === target);
+}
+
+/**
+ * 按 heading 块 id 过滤（最精确，不会受同名标题干扰）。
+ * 仅匹配 block_type 为 heading（1~9）且 block_id 严格相等的块。
+ */
+export function createTitleBlockIdFilter (options: { blockId: string }): {
+  pageHandler: (blocks: DocxBlock[]) => boolean;
+  getResult: () => TitleFilterResult;
+} {
+  const target = options.blockId.trim();
+  // info 非 null 已在骨架中保证（仅 heading 才会进入 match），block.block_id 比较即可
+  return createHeadingMatchFilter(block => block.block_id === target);
+}
+
+/**
+ * 流式收集文档中所有标题，用于 get-titles 命令。
+ * 返回的 pageHandler 始终返回 true，以遵循分页拉取全量文档。
+ */
+export function createHeadingCollector (): {
+  pageHandler: (blocks: DocxBlock[]) => boolean;
+  getHeadings: () => HeadingInfo[];
+} {
+  const headings: HeadingInfo[] = [];
+
+  function pageHandler (blocks: DocxBlock[]): boolean {
+    for (const block of blocks) {
+      const info = toHeadingInfo(block);
+      if (info) headings.push(info);
+    }
+    return true;
+  }
+
+  return { pageHandler, getHeadings: () => [...headings] };
 }

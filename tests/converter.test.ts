@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { parseWikiUrl } from '../src/converter.js';
+import { buildTitleTree } from '../src/get-titles.js';
+import type { HeadingInfo } from '../src/title-filter.js';
 
 describe('parseWikiUrl', () => {
   it('parses docx URL', () => {
@@ -40,5 +42,53 @@ describe('parseWikiUrl', () => {
   it('handles URL with path suffix', () => {
     const result = parseWikiUrl('https://a.feishu.cn/docx/abc123/extra');
     expect(result.docToken).toBe('abc123');
+  });
+});
+
+// ─── buildTitleTree ──────────────────────────────────────────────────────────────────────────
+
+function h (blockId: string, level: number, text: string): HeadingInfo {
+  return { blockId, level, text };
+}
+
+describe('buildTitleTree', () => {
+  it('builds tree from flat headings using level', () => {
+    const flat: HeadingInfo[] = [
+      h('h1', 1, 'A'),
+      h('h2', 2, 'A.1'),
+      h('h3', 2, 'A.2'),
+      h('h4', 1, 'B'),
+    ];
+    const tree = buildTitleTree(flat);
+    expect(tree).toHaveLength(2);
+    expect(tree[0]!.text).toBe('A');
+    expect(tree[0]!.children).toHaveLength(2);
+    expect(tree[0]!.children![0]!.text).toBe('A.1');
+    expect(tree[1]!.text).toBe('B');
+    expect(tree[1]!.children).toBeUndefined();
+  });
+
+  it('handles skipped levels by attaching to nearest higher-level ancestor', () => {
+    const flat: HeadingInfo[] = [
+      h('h1', 1, 'A'),
+      h('h3', 3, 'C'), // 跳过 H2，C 仍作为 A 的子节点
+    ];
+    const tree = buildTitleTree(flat);
+    expect(tree).toHaveLength(1);
+    expect(tree[0]!.children).toHaveLength(1);
+    expect(tree[0]!.children![0]!.text).toBe('C');
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(buildTitleTree([])).toEqual([]);
+  });
+
+  it('multiple roots when first heading is not the lowest level', () => {
+    const flat: HeadingInfo[] = [
+      h('h2', 2, 'X'),
+      h('h2b', 2, 'Y'),
+    ];
+    const tree = buildTitleTree(flat);
+    expect(tree).toHaveLength(2);
   });
 });

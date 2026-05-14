@@ -41,8 +41,10 @@ export const tableParser: BlockParser = {
       const row = Math.floor(i / cols);
       const col = i % cols;
       if (rows[row]?.cells[col]) {
-        rows[row]!.cells[col]!.rowSpan = m.row_span > 1 ? m.row_span : undefined;
-        rows[row]!.cells[col]!.colSpan = m.col_span > 1 ? m.col_span : undefined;
+        const rowSpan = m.row_span ?? 1;
+        const colSpan = m.col_span ?? 1;
+        rows[row]!.cells[col]!.rowSpan = rowSpan > 1 ? rowSpan : undefined;
+        rows[row]!.cells[col]!.colSpan = colSpan > 1 ? colSpan : undefined;
       }
     }
 

@@ -45,6 +45,7 @@ npx -y lark-docx2md@latest download <url>
 | `--agent [mode]`         | Agent 模式：日志 ERROR。不传值（或 `=true`）为在线模式，Markdown 输出到 stdout；传 `local` 则落盘后输出引导 AI 读取的提示词 | `LARK_DOCX2MD_AGENT=true\|local`    | `false`               |
 | `--image-mode <mode>`    | 图片处理模式：`local`（下载到本地）或 `online`（24h 临时链接） | `LARK_DOCX2MD_IMAGE_MODE`    | `local`               |
 | `--filter-title <title>` | 按标题过滤：仅转换匹配标题及其下级内容（匹配到同级或更高级标题时截止） | —                            | —                     |
+| `--filter-title-block-id <id>` | 按 heading 块 id 精确过滤（无同名歧义），通常配合 `get-titles` 子命令获取；与 `--filter-title` 互斥 | —                            | —                     |
 | `--wb-format <format>`   | 画板输出格式：`base64`、`inline-svg`、`svg`、`yaml` | `LARK_DOCX2MD_WB_FORMAT`     | `svg`（agent 下默认 `yaml`） |
 | `--wb-bg <style>`        | 画板 SVG 背景：`none`、`dot` 或颜色值如 `#fff`       | `LARK_DOCX2MD_WB_BG`         | `none`                |
 | `--wb-image-mode <mode>` | 画板图片模式：`online`、`base64` 或 `local`        | `LARK_DOCX2MD_WB_IMAGE_MODE` | `local`               |
@@ -54,7 +55,25 @@ npx -y lark-docx2md@latest download <url>
 > - `--agent`（在线）：强制 `--image-mode=online`、`--wb-image-mode=online`；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；转换完成后 Markdown 直接通过 stdout 输出。
 > - `--agent local`：强制 `--image-mode=local`、`--wb-image-mode=local`（Markdown、图片、画板中的图片均落盘）；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；stdout 输出引导 AI 读取文件的提示词（包含绝对路径）。
 > - 非 agent 模式下 `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
-> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。未匹配到则报错提示。
+> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 yaml 清单。
+> - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
+
+## 子命令：`get-titles`
+
+列出 docx/wiki 文档全部标题（不支持 sheets），配合 `--filter-title-block-id` 使用可避开同名歧义。
+
+```bash
+npx -y lark-docx2md@latest get-titles --agent <url>
+```
+
+| 参数                    | 说明                                                                                       | 默认值    |
+|-----------------------|------------------------------------------------------------------------------------------|--------|
+| `<url>`               | 飞书 wiki/docx URL                                                                       | —      |
+| `--max-level <n>`     | 仅输出 `level <= n` 的标题（1~9）                                                     | `9`    |
+| `--format <format>`   | 输出格式：`yaml`（扁平） \| `yaml-tree`（嵌套） \| `json` \| `tree`（json 嵌套） \| `text`（缩进的 markdown 标题） | `yaml` |
+| `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
+
+输出包含 `blockId` / `index` / `level` / `text` / `path`，可被 AI 直接消费用于选择目标章节。
 
 ## 功能
 

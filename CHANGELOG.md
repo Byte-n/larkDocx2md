@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.5.3-beta.0
+
+### Features
+
+- **`--filter-title-block-id` 精确过滤**：新增 CLI 选项与 `ConvertOptions.filterTitleBlockId`，按 heading 块 id 严格匹配目标章节，彻底规避同名标题歧义；与 `--filter-title` 互斥
+- **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `yaml` / `yaml-tree` / `json` / `tree` / `text` 五种输出格式与 `--max-level` 限级；不支持 sheets
+- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `index` / `level` / `text` / `path`），`--filter-title` 未命中时错误信息改为与 `get-titles` 同形的 yaml 清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
+
+### Fixed
+
+- **表格 `row_span` / `col_span` 容错**：飞书接口可能返回 `undefined`，解析时兜底为 1，避免崩溃
+
+### Changed
+
+- **请求限速放宽**：`getDocxBlocks` 分页间隔 100 → 50ms、图片下载间隔 600 → 300ms，大文档转换更快
+- **SKILL 工作流升级**：`skills/lark-docx2md/SKILL.md` 指定标题场景改为「`get-titles` → 匹配 blockId → `dl --filter-title-block-id`」三步式，支持单标题、多级路径、同名同路径等多种消歧场景
+
 ## 0.5.2
 
 ### Fixed

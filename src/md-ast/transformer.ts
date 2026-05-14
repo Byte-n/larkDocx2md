@@ -280,7 +280,7 @@ export class MdTransformer {
             error: `读取失败：${e.message}`,
           });
         } finally {
-          await sleep(600);
+          await sleep(300);
         }
       }
       map.set(raw, {

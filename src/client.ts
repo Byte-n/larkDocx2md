@@ -64,7 +64,7 @@ export function createClient (appId: string, appSecret: string, loggerLevel: Log
     for (let i = 0; true ; i++) {
       if (i > 0) {
         // 单个应用调用频率上限为每秒 5 次
-        await sleep(100);
+        await sleep(50);
       }
       const data = await call('getDocxBlocks', () =>
         client.docx.v1.documentBlock.list({

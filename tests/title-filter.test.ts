@@ -1,5 +1,11 @@
 import { describe, it, expect } from 'vitest';
-import { createTitleFilter, getHeadingLevel, extractHeadingText } from '../src/title-filter.js';
+import {
+  createHeadingCollector,
+  createTitleBlockIdFilter,
+  createTitleFilter,
+  extractHeadingText,
+  getHeadingLevel,
+} from '../src/title-filter.js';
 import type { DocxBlock } from '../src/types.js';
 
 // ─── Helper: 创建模拟 DocxBlock ─────────────────────────────────────────────
@@ -167,11 +173,11 @@ describe('createTitleFilter', () => {
     const result = getResult();
     expect(result.matched).toBe(false);
     expect(result.availableHeadings).toEqual([
-      { level: 1, text: 'Intro' },
-      { level: 2, text: 'Section A' },
-      { level: 3, text: 'Section A' },
-      { level: 2, text: 'Section A' },
-      { level: 1, text: 'Outro' },
+      { blockId: 'blk', index: 1, level: 1, text: 'Intro', path: ['Intro'] },
+      { blockId: 'blk', index: 2, level: 2, text: 'Section A', path: ['Intro', 'Section A'] },
+      { blockId: 'blk', index: 3, level: 3, text: 'Section A', path: ['Intro', 'Section A', 'Section A'] },
+      { blockId: 'blk', index: 4, level: 2, text: 'Section A', path: ['Intro', 'Section A'] },
+      { blockId: 'blk', index: 5, level: 1, text: 'Outro', path: ['Outro'] },
     ]);
   });
 
@@ -188,8 +194,8 @@ describe('createTitleFilter', () => {
     const result = getResult();
     expect(result.matched).toBe(true);
     expect(result.availableHeadings).toEqual([
-      { level: 1, text: 'Before' },
-      { level: 2, text: 'Target' },
+      { blockId: 'blk', index: 1, level: 1, text: 'Before', path: ['Before'] },
+      { blockId: 'blk', index: 2, level: 2, text: 'Target', path: ['Before', 'Target'] },
     ]);
   });
 
@@ -227,5 +233,182 @@ describe('createTitleFilter', () => {
 
     const result = getResult();
     expect(result.matched).toBe(true);
+  });
+});
+
+// ─── createTitleBlockIdFilter ────────────────────────────────────────────────
+
+describe('createTitleBlockIdFilter', () => {
+  it('matches by block id rather than text (disambiguates same-name headings)', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h-target' });
+
+    pageHandler([
+      makeHeadingBlock(2, 'Same Name', 'h-other'),
+      makeTextBlock('a'),
+      makeHeadingBlock(2, 'Same Name', 'h-target'),
+      makeTextBlock('b'),
+      makeHeadingBlock(2, 'Same Name', 'h-third'),
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    // 命中的 heading + b，遇到同级标题停止
+    expect(result.blocks).toHaveLength(2);
+    expect(result.blocks[0]!.block_id).toBe('h-target');
+    expect(result.blocks[1]!.block_id).toBe('b');
+  });
+
+  it('non-heading blocks with matching id never match', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'txt' });
+
+    pageHandler([makeHeadingBlock(1, 'A', 'h1'), makeTextBlock('txt')]);
+
+    const result = getResult();
+    expect(result.matched).toBe(false);
+  });
+
+  it('trims whitespace from blockId option', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: '  h1  ' });
+
+    pageHandler([makeHeadingBlock(1, 'A', 'h1'), makeTextBlock('c')]);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+  });
+
+  it('always keeps page blocks', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h1' });
+
+    pageHandler([makePageBlock(), makeHeadingBlock(1, 'X', 'h1'), makeTextBlock()]);
+
+    expect(getResult().blocks[0]!.block_type).toBe(1);
+  });
+
+  it('returns false from pageHandler after done', () => {
+    const { pageHandler } = createTitleBlockIdFilter({ blockId: 'h1' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h1'),
+      makeHeadingBlock(1, 'B', 'h2'), // 同级 → done
+    ]);
+    expect(pageHandler([makeTextBlock()])).toBe(false);
+  });
+
+  it('availableHeadings on miss carries blockId/index/path (yaml-shape)', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'never' });
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h1'),
+      makeHeadingBlock(2, 'B', 'h2'),
+      makeHeadingBlock(2, 'B', 'h3'), // 同名同父级，path 与上条相同
+    ]);
+
+    const result = getResult();
+    expect(result.matched).toBe(false);
+    expect(result.availableHeadings).toEqual([
+      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
+      { blockId: 'h2', index: 2, level: 2, text: 'B', path: ['A', 'B'] },
+      { blockId: 'h3', index: 3, level: 2, text: 'B', path: ['A', 'B'] },
+    ]);
+  });
+
+  it('stops collecting at higher-level heading (level < matchedLevel)', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h-sub' });
+
+    pageHandler([
+      makeHeadingBlock(2, 'Sub', 'h-sub'),
+      makeTextBlock('c1'),
+      makeHeadingBlock(1, 'Top', 'h-top'), // 更高级 → 停止
+      makeTextBlock('after'),
+    ]);
+
+    const result = getResult();
+    expect(result.blocks).toHaveLength(2); // Sub + c1
+  });
+
+  it('handles multi-page scanning before match', () => {
+    const { pageHandler, getResult } = createTitleBlockIdFilter({ blockId: 'h-found' });
+
+    expect(pageHandler([makeHeadingBlock(1, 'A', 'h1')])).toBe(true);
+    expect(pageHandler([makeHeadingBlock(1, 'B', 'h-found'), makeTextBlock('c')])).toBe(true);
+
+    const result = getResult();
+    expect(result.matched).toBe(true);
+    expect(result.blocks).toHaveLength(2);
+  });
+});
+
+// ─── createHeadingCollector ──────────────────────────────────────────────────
+
+describe('createHeadingCollector', () => {
+  it('collects flat HeadingInfo with stack-based path and 1-based index', () => {
+    const { pageHandler, getHeadings } = createHeadingCollector();
+
+    pageHandler([
+      makePageBlock(),
+      makeHeadingBlock(1, 'A', 'h1'),
+      makeTextBlock('t'),
+      makeHeadingBlock(2, 'A.1', 'h2'),
+      makeHeadingBlock(2, 'A.2', 'h3'),
+      makeHeadingBlock(1, 'B', 'h4'),
+    ]);
+
+    expect(getHeadings()).toEqual([
+      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
+      { blockId: 'h2', index: 2, level: 2, text: 'A.1', path: ['A', 'A.1'] },
+      { blockId: 'h3', index: 3, level: 2, text: 'A.2', path: ['A', 'A.2'] },
+      { blockId: 'h4', index: 4, level: 1, text: 'B', path: ['B'] },
+    ]);
+  });
+
+  it('handles skipped levels (e.g. H1 then H3)', () => {
+    const { pageHandler, getHeadings } = createHeadingCollector();
+
+    pageHandler([
+      makeHeadingBlock(1, 'A', 'h1'),
+      makeHeadingBlock(3, 'C', 'h3'), // 跳过 H2，path 仍应为 [A, C]
+      makeHeadingBlock(2, 'B', 'h2'), // 返回 H2，应从 A pop 到 仅剩 A，path=[A, B]
+    ]);
+
+    expect(getHeadings()).toEqual([
+      { blockId: 'h1', index: 1, level: 1, text: 'A', path: ['A'] },
+      { blockId: 'h3', index: 2, level: 3, text: 'C', path: ['A', 'C'] },
+      { blockId: 'h2', index: 3, level: 2, text: 'B', path: ['A', 'B'] },
+    ]);
+  });
+
+  it('returns empty array when no headings present', () => {
+    const { pageHandler, getHeadings } = createHeadingCollector();
+    pageHandler([makePageBlock(), makeTextBlock('t1'), makeTextBlock('t2')]);
+    expect(getHeadings()).toEqual([]);
+  });
+
+  it('pageHandler always returns true to drain document', () => {
+    const { pageHandler } = createHeadingCollector();
+    expect(pageHandler([makeHeadingBlock(1, 'A', 'h1')])).toBe(true);
+    expect(pageHandler([])).toBe(true);
+  });
+
+  it('accumulates across multiple page calls with continuous index', () => {
+    const { pageHandler, getHeadings } = createHeadingCollector();
+
+    pageHandler([makeHeadingBlock(1, 'A', 'h1'), makeHeadingBlock(2, 'A.1', 'h2')]);
+    pageHandler([makeHeadingBlock(1, 'B', 'h3')]);
+
+    expect(getHeadings().map(h => h.index)).toEqual([1, 2, 3]);
+    expect(getHeadings()[2]).toEqual({
+      blockId: 'h3', index: 3, level: 1, text: 'B', path: ['B'],
+    });
+  });
+
+  it('falls back to empty blockId when block_id is missing', () => {
+    const { pageHandler, getHeadings } = createHeadingCollector();
+
+    pageHandler([{
+      block_type: 3,
+      heading1: { elements: [{ text_run: { content: 'NoId' } }] },
+    } as unknown as DocxBlock]);
+
+    expect(getHeadings()[0]!.blockId).toBe('');
   });
 });

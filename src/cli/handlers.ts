@@ -6,7 +6,7 @@ import {
   GET_TITLES_NON_DOCUMENT_HINT,
   buildTitleTree,
   getTitles,
-  serializeTitlesText,
+  serializeTitlesTextDocument,
 } from '../lib/get-titles.js';
 import { setLogLevel } from '../lib/logger.js';
 import { parseWikiUrl } from '../lib/url.js';
@@ -96,7 +96,7 @@ export async function handleGetTitlesCommand (
   const filtered = result.titles.filter(t => t.level <= opts.maxLevel);
   const content = opts.format === 'yaml'
     ? serializeYaml({ url: result.url, docToken: result.docToken, titles: buildTitleTree(filtered) })
-    : serializeTitlesText(filtered);
+    : serializeTitlesTextDocument(filtered);
 
   if (agentLocal) {
     fs.mkdirSync(opts.output, { recursive: true });

@@ -62,6 +62,14 @@ export interface TitleTreeNode extends HeadingInfo {
 
 export type GetTitlesFormat = 'yaml' | 'text';
 
+export const TITLES_TEXT_FORMAT_COMMENT = `---
+format: lark-docx2md.titles
+line_format: <markdown_heading> [<blockId>] <title>
+use_block_id_with: npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"
+---
+
+`;
+
 /** 按 level 栈式回溯将扁平标题列表转为树（容忍跳级标题）。 */
 export function buildTitleTree (titles: HeadingInfo[]): TitleTreeNode[] {
   const roots: TitleTreeNode[] = [];
@@ -86,4 +94,9 @@ export function serializeTitlesText (titles: HeadingInfo[]): string {
   return titles
     .map(t => `${'#'.repeat(t.level)} [${t.blockId}] ${t.text}`)
     .join('\n') + '\n';
+}
+
+/** 输出面向用户/Agent 读取的完整 text 文档，文件开头包含格式说明。 */
+export function serializeTitlesTextDocument (titles: HeadingInfo[]): string {
+  return TITLES_TEXT_FORMAT_COMMENT + serializeTitlesText(titles);
 }

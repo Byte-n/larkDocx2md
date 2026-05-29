@@ -1,6 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { assertOutputLineLimit, buildFilterErrorMessage, countMarkdownLines, parseWikiUrl } from '../src/lib/converter.js';
-import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles, serializeTitlesText } from '../src/lib/get-titles.js';
+import {
+  GET_TITLES_NON_DOCUMENT_HINT,
+  buildTitleTree,
+  getTitles,
+  serializeTitlesText,
+  serializeTitlesTextDocument,
+} from '../src/lib/get-titles.js';
 import type { HeadingInfo } from '../src/lib/title-filter.js';
 
 describe('parseWikiUrl', () => {
@@ -105,6 +111,21 @@ describe('serializeTitlesText', () => {
   it('returns empty output for empty headings', () => {
     expect(serializeTitlesText([])).toBe('');
   });
+
+  it('serializes a complete text document with front matter', () => {
+    expect(serializeTitlesTextDocument([
+      h('h1', 1, 'A'),
+      h('h2', 2, 'B'),
+    ])).toBe(`---
+format: lark-docx2md.titles
+line_format: <markdown_heading> [<blockId>] <title>
+use_block_id_with: npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"
+---
+
+# [h1] A
+## [h2] B
+`);
+  });
 });
 
 describe('getTitles', () => {
@@ -146,7 +167,7 @@ describe('output line limit', () => {
 describe('buildFilterErrorMessage', () => {
   it('prints available headings in compact text format', () => {
     const msg = buildFilterErrorMessage(
-      { appId: '', appSecret: '', url: 'https://example.feishu.cn/docx/doc', filterTitle: 'Missing' },
+      { appId: '', appSecret: '', url: 'https://example.feishu.cn/docx/doc', filterTitle: 'Missing' } as any,
       {
         blocks: [],
         matched: false,
@@ -159,7 +180,9 @@ describe('buildFilterErrorMessage', () => {
       'doc',
     );
 
-    expect(msg).toContain('Full title list of the document:\n\n# [h1] A\n## [h2] B\n');
+    expect(msg).toContain('Full title list of the document:\n\n---\nformat: lark-docx2md.titles');
+    expect(msg).toContain('npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"');
+    expect(msg).toContain('# [h1] A\n## [h2] B\n');
     expect(msg).not.toContain('blockId:');
     expect(msg).not.toContain('titles:');
   });

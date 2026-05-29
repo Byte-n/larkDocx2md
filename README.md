@@ -73,10 +73,10 @@ npx -y lark-docx2md@latest get-titles --agent --url <url>
 |-----------------------|------------------------------------------------------------------------------------------|--------|
 | `--url <url>`         | 飞书 wiki/docx URL                                                                       | —      |
 | `--max-level <n>`     | 仅输出 `level <= n` 的标题（1~9）                                                     | `9`    |
-| `--format <format>`   | 输出格式：`text`（`## [blockId] 标题`） \| `yaml`（嵌套）                              | `text` |
+| `--format <format>`   | 输出格式：`text`（YAML front matter + `## [blockId] 标题`） \| `yaml`（嵌套）               | `text` |
 | `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
 
-`text` 格式用 `#` 数量保留标题层级，并把 `blockId` 放在标题旁，便于 AI 直接选择目标章节。
+`text` 格式文件开头包含 YAML front matter 格式说明；正文用 `#` 数量保留标题层级，并把 `blockId` 放在标题旁，便于 AI 直接选择目标章节。
 
 ## 功能
 

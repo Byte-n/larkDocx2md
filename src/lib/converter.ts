@@ -13,7 +13,7 @@ import {
   createTitleBlockIdFilter,
   type TitleFilterResult,
 } from './title-filter.js';
-import { serializeTitlesText } from './get-titles.js';
+import { serializeTitlesTextDocument } from './get-titles.js';
 import { parseWikiUrl } from './url.js';
 
 // 保留 “parseWikiUrl from converter” 公开 API（供外部代码 / 测试向后兼容）
@@ -164,7 +164,7 @@ export function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilt
   let msg = `No heading matched ${target}. Please verify the heading text/id.`;
 
   if (result.availableHeadings.length > 0) {
-    const text = serializeTitlesText(result.availableHeadings);
+    const text = serializeTitlesTextDocument(result.availableHeadings);
     msg += `\n\nFull title list of the document:\n\n${text}`;
   }
   return msg;

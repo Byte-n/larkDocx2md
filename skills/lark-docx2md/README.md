@@ -38,7 +38,7 @@ export LARK_DOCX2MD_APP_SECRET="xxx"
 直接下载整份内容：
 
 ```bash
-npx -y lark-docx2md@latest dl --agent local "<url>"
+npx -y lark-docx2md@latest dl --agent local --url "<url>"
 ```
 
 ### 场景 B：`wiki/docx/docs` 且指定了标题
@@ -46,14 +46,14 @@ npx -y lark-docx2md@latest dl --agent local "<url>"
 1. 获取标题列表：
 
 ```bash
-npx -y lark-docx2md@latest get-titles --agent local "<url>"
+npx -y lark-docx2md@latest get-titles --agent local --url "<url>"
 ```
 
 2. 匹配目标标题，拿到 `blockId`。
 3. 按标题块下载：
 
 ```bash
-npx -y lark-docx2md@latest dl --agent local --filter-title-block-id "<blockId>" "<url>"
+npx -y lark-docx2md@latest dl --agent local --filter-title-block-id "<blockId>" --url "<url>"
 ```
 
 ## 标题识别规则（给调用方）

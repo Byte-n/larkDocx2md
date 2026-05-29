@@ -32,7 +32,7 @@ metadata:
 电子表格不做标题识别，直接下载整表：
 
 ```bash
-npx -y lark-docx2md@latest dl --agent local "<url>"
+npx -y lark-docx2md@latest dl --agent local --url "<url>"
 ```
 
 #### B. 文档（`/wiki/`、`/docx/`、`/docs/`）
@@ -49,7 +49,7 @@ npx -y lark-docx2md@latest dl --agent local "<url>"
 2. 如果成功识别到 `title`，则需要进一步获取 `<blockId>`：
 
 ```bash
-npx -y lark-docx2md@latest get-titles --agent local "<url>"
+npx -y lark-docx2md@latest get-titles --agent local --url "<url>"
 ```
 
 根据 `get-titles` 输出的所有标题信息，匹配 `title` 获取对应的 `<blockId>`。若没有明确的匹配项或存在多个匹配项，则必须让用户参与决策。
@@ -59,13 +59,13 @@ npx -y lark-docx2md@latest get-titles --agent local "<url>"
 **有 `<blockId>`：**
 
 ```bash
-npx -y lark-docx2md@latest dl --agent local --filter-title-block-id "<blockId>" "<url>"
+npx -y lark-docx2md@latest dl --agent local --filter-title-block-id "<blockId>" --url "<url>"
 ```
 
 **无 `<blockId>`：**
 
 ```bash
-npx -y lark-docx2md@latest dl --agent local "<url>"
+npx -y lark-docx2md@latest dl --agent local --url "<url>"
 ```
 
 ### 读取结果

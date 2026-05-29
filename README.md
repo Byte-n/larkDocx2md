@@ -17,13 +17,13 @@
 > 命令所需权限见下 ‘飞书自创应用需要的权限’
 
 ```bash
-npx -y lark-docx2md@latest download https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
+npx -y lark-docx2md@latest download --url https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
 ```
 
 > `download` 命令支持别名 `dl`，以下写法等效：
 >
 > ```bash
-> npx -y lark-docx2md@latest dl https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
+> npx -y lark-docx2md@latest dl --url https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
 > ```
 
 或先设置环境变量（命令行参数可省略）：
@@ -31,14 +31,14 @@ npx -y lark-docx2md@latest download https://xxx.feishu.cn/wiki/xxx --app-id cli_
 ```bash
 export LARK_DOCX2MD_APP_ID=<APP_ID>
 export LARK_DOCX2MD_APP_SECRET=<APP_SECRET>
-npx -y lark-docx2md@latest download <url>
+npx -y lark-docx2md@latest download --url <url>
 ```
 
 ## 参数
 
 | 参数                       | 说明                                        | 环境变量                         | 默认值                   |
 |--------------------------|-------------------------------------------|------------------------------|-----------------------|
-| `<url>`                  | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`，支持 `?sheet=<sheetId>` 指定子表） | —                            | —                     |
+| `--url <url>`            | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`，支持 `?sheet=<sheetId>` 指定子表） | —                            | —                     |
 | `--app-id <id>`          | 飞书应用 App ID                               | `LARK_DOCX2MD_APP_ID`        | —                     |
 | `--app-secret <secret>`  | 飞书应用 App Secret                           | `LARK_DOCX2MD_APP_SECRET`    | —                     |
 | `-o, --output <dir>`     | 输出目录                                      | `LARK_DOCX2MD_OUTPUT`        | `./larkDocx2mdOutput` |
@@ -66,12 +66,12 @@ npx -y lark-docx2md@latest download <url>
 列出 docx/wiki 文档全部标题（不支持 sheets），配合 `--filter-title-block-id` 使用可避开同名歧义。
 
 ```bash
-npx -y lark-docx2md@latest get-titles --agent <url>
+npx -y lark-docx2md@latest get-titles --agent --url <url>
 ```
 
 | 参数                    | 说明                                                                                       | 默认值    |
 |-----------------------|------------------------------------------------------------------------------------------|--------|
-| `<url>`               | 飞书 wiki/docx URL                                                                       | —      |
+| `--url <url>`         | 飞书 wiki/docx URL                                                                       | —      |
 | `--max-level <n>`     | 仅输出 `level <= n` 的标题（1~9）                                                     | `9`    |
 | `--format <format>`   | 输出格式：`text`（`## [blockId] 标题`） \| `yaml`（嵌套）                              | `text` |
 | `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
@@ -128,10 +128,10 @@ npx -y lark-docx2md@latest get-titles --agent <url>
 
 ```bash
 # 直接运行（无需构建），download 可使用别名 dl
-pnpm dev download --app-id <APP_ID> --app-secret <APP_SECRET> <url>
+pnpm dev download --app-id <APP_ID> --app-secret <APP_SECRET> --url <url>
 
 # 或使用环境变量
-LARK_DOCX2MD_APP_ID=<APP_ID> LARK_DOCX2MD_APP_SECRET=<APP_SECRET> pnpm dev dl <url>
+LARK_DOCX2MD_APP_ID=<APP_ID> LARK_DOCX2MD_APP_SECRET=<APP_SECRET> pnpm dev dl --url <url>
 
 # 构建为 JS
 pnpm build

@@ -48,10 +48,24 @@ function missingCredentialsMessage (agentEnabled: boolean): string {
   return 'Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET';
 }
 
+function resolveCommandUrl (positionalUrl: string | undefined, optionUrl: string | undefined): string {
+  if (positionalUrl) {
+    process.stderr.write(
+      'Warning: passing the URL as a positional argument is deprecated and will be removed in the next version. Use --url <url> instead.\n',
+    );
+  }
+  const url = optionUrl ?? positionalUrl;
+  if (!url) {
+    program.error('Missing document URL: pass --url <url>. The positional URL argument is deprecated and will be removed in the next version.');
+  }
+  return url!;
+}
+
 program
   .command('download')
   .alias('dl')
   .description('Download a wiki document to markdown')
+  .option('--url <url>', 'Feishu wiki/document URL')
   .option('--app-id <id>', 'Feishu app ID (or read from LARK_DOCX2MD_APP_ID)')
   .option('--app-secret <secret>', 'Feishu app secret (or read from LARK_DOCX2MD_APP_SECRET)')
   .option('-o, --output <dir>', 'Output directory (or LARK_DOCX2MD_OUTPUT)')
@@ -63,8 +77,9 @@ program
   .option('--filter-title <title>', 'Only convert the section matching this heading title (single title, first match wins on duplicates)')
   .option('--filter-title-block-id <id>', 'Only convert the section whose heading block id matches (most precise; obtain from get-titles)')
   .option('--max-output-lines <n>', 'Maximum allowed markdown lines when no heading filter is specified; errors if exceeded (or LARK_DOCX2MD_MAX_OUTPUT_LINES)')
-  .argument('<url>', 'Feishu wiki document URL: https://*.feishu.cn/wiki/*')
-  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string; filterTitle?: string; filterTitleBlockId?: string; maxOutputLines?: string }) => {
+  .argument('[url]', 'Deprecated: Feishu wiki document URL. Use --url <url> instead.')
+  .action(async (positionalUrl: string | undefined, opts: { url?: string; appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string; filterTitle?: string; filterTitleBlockId?: string; maxOutputLines?: string }) => {
+    const url = resolveCommandUrl(positionalUrl, opts.url);
     // ─── 环境变量默认值（直接指定 > 环境变量 > 内置默认值）────────────────
     opts.appId = opts.appId ?? process.env.LARK_DOCX2MD_APP_ID;
     opts.appSecret = opts.appSecret ?? process.env.LARK_DOCX2MD_APP_SECRET;
@@ -171,14 +186,16 @@ program
 program
   .command('get-titles')
   .description('Print all headings (level 1~9) of a wiki/docx document. Useful before --filter-title-block-id.')
+  .option('--url <url>', 'Feishu wiki/docx URL')
   .option('--app-id <id>', 'Feishu app ID (or read from LARK_DOCX2MD_APP_ID)')
   .option('--app-secret <secret>', 'Feishu app secret (or read from LARK_DOCX2MD_APP_SECRET)')
   .option('-o, --output <dir>', 'Output directory used by --agent local (or LARK_DOCX2MD_OUTPUT)')
   .option('--max-level <n>', 'Only output headings whose level <= n (1~9)', '9')
   .option('--format <format>', 'Output format: "text" or "yaml"', 'text')
   .option('--agent [mode]', 'Enable agent mode: ERROR log level, AI-oriented stdout. Modes: "stdout" (default, print titles to stdout) or "local" (save titles to disk and print a read-file prompt). Or LARK_DOCX2MD_AGENT=stdout|local')
-  .argument('<url>', 'Feishu wiki/docx URL: https://*.feishu.cn/{wiki,docx,docs}/*')
-  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; maxLevel?: string; format?: string; agent?: boolean | string }) => {
+  .argument('[url]', 'Deprecated: Feishu wiki/docx URL. Use --url <url> instead.')
+  .action(async (positionalUrl: string | undefined, opts: { url?: string; appId?: string; appSecret?: string; output?: string; maxLevel?: string; format?: string; agent?: boolean | string }) => {
+    const url = resolveCommandUrl(positionalUrl, opts.url);
     opts.appId = opts.appId ?? process.env.LARK_DOCX2MD_APP_ID;
     opts.appSecret = opts.appSecret ?? process.env.LARK_DOCX2MD_APP_SECRET;
     opts.output = opts.output ?? process.env.LARK_DOCX2MD_OUTPUT ?? './larkDocx2mdOutput';

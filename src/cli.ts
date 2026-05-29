@@ -154,8 +154,7 @@ program
       const lineCount = countMarkdownLines(result.markdown);
       process.stdout.write(
         `**The Feishu document has been downloaded to the following absolute path:**\n\n` +
-        `\`${result.filePath}\`\n\n` +
-        `**Entry file line count:** ${lineCount}\n\n` +
+        `\`${result.filePath}\`. file line count: ${lineCount}\n\n` +
         `**Read this file to access the full markdown content.**\n`,
       );
     } else if (agentStdout) {
@@ -220,8 +219,7 @@ program
       const lineCount = countMarkdownLines(content);
       process.stdout.write(
         `**The Feishu document titles have been downloaded to the following absolute path:**\n\n` +
-        `\`${filePath}\`\n\n` +
-        `**Entry file line count:** ${lineCount}\n\n` +
+        `\`${filePath}\`. file line count: ${lineCount}\n\n` +
         `**Read this file to access the full titles list.**\n`,
       );
     } else {

@@ -35,7 +35,7 @@ describe('parseWikiUrl', () => {
   });
 
   it('throws on invalid URL', () => {
-    expect(() => parseWikiUrl('https://example.com/invalid/path')).toThrow('Invalid feishu document URL');
+    expect(() => parseWikiUrl('https://example.com/invalid/path')).toThrow('Expected an HTTPS URL like');
     expect(() => parseWikiUrl('not a url')).toThrow();
   });
 

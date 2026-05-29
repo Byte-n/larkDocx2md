@@ -1,13 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import type { LarkClient } from '../client.js';
-import type { ConvertOptions, WbImageMode } from '../types.js';
+import type { LarkClient } from '../lib/client.js';
+import type { ConvertOptions, WbImageMode } from '../lib/types.js';
 import { whiteboardNodesToSvg } from '../whiteboard/index.js';
 import { whiteboardNodesToYaml } from '../whiteboard/yaml/index.js';
 import { filterNodes } from '../whiteboard/utils.js';
 import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter } from '../sheet/index.js';
 import type { ResolvedSheet } from '../sheet/index.js';
-import { createLogger } from '../logger.js';
+import { createLogger } from '../lib/logger.js';
 import type { MdBlockNode } from './types.js';
 
 const logger = createLogger('transformer');
@@ -98,7 +98,7 @@ export class MdTransformer {
 
   private async processWhiteboardSvg (
     token: string,
-    wbNodes: import('../types.js').WhiteboardNode[],
+    wbNodes: import('../lib/types.js').WhiteboardNode[],
   ): Promise<MdBlockNode> {
     const effectiveNodes = this.opts.wbFormat === 'inline-svg'
       ? filterNodes(wbNodes, n => n.type !== 'paint' && n.type !== 'svg')
@@ -143,7 +143,7 @@ export class MdTransformer {
 
   private async processWhiteboardYaml (
     token: string,
-    wbNodes: import('../types.js').WhiteboardNode[],
+    wbNodes: import('../lib/types.js').WhiteboardNode[],
   ): Promise<MdBlockNode> {
     const { yaml: yamlContent, imageTokens } = whiteboardNodesToYaml(wbNodes);
     let resolvedYaml = yamlContent;

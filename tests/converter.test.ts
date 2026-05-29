@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
-import { assertOutputLineLimit, buildFilterErrorMessage, countMarkdownLines, parseWikiUrl } from '../src/converter.js';
-import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles, serializeTitlesText } from '../src/get-titles.js';
-import type { HeadingInfo } from '../src/title-filter.js';
+import { assertOutputLineLimit, buildFilterErrorMessage, countMarkdownLines, parseWikiUrl } from '../src/lib/converter.js';
+import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles, serializeTitlesText } from '../src/lib/get-titles.js';
+import type { HeadingInfo } from '../src/lib/title-filter.js';
 
 describe('parseWikiUrl', () => {
   it('parses docx URL', () => {

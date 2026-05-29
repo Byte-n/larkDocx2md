@@ -4,8 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { MdTransformer } from '../../src/md-ast/transformer.js';
 import type { MdBlockNode } from '../../src/md-ast/types.js';
-import type { ConvertOptions } from '../../src/types.js';
-import type { LarkClient } from '../../src/client.js';
+import type { ConvertOptions } from '../../src/lib/types.js';
+import type { LarkClient } from '../../src/lib/client.js';
 
 // ─── helpers ─────────────────────────────────────────────────────────────
 

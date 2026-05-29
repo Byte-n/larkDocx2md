@@ -2,10 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import { createClient } from './client.js';
-import { Parser } from './md-ast/parser.js';
-import { registerBuiltinParsers } from './md-ast/parsers/index.js';
-import { MdSerializer, registerBuiltinSerializers } from './md-ast/serializer.js';
-import { MdTransformer } from './md-ast/transformer.js';
+import { Parser } from '../md-ast/parser.js';
+import { registerBuiltinParsers } from '../md-ast/parsers/index.js';
+import { MdSerializer, registerBuiltinSerializers } from '../md-ast/serializer.js';
+import { MdTransformer } from '../md-ast/transformer.js';
 import { createLogger } from './logger.js';
 import type { ConvertOptions, ConvertResult, DocxBlock } from './types.js';
 import {
@@ -43,7 +43,7 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
     objType = 'sheet';
   }
 
-  let ast: import('./md-ast/types.js').MdBlockNode;
+  let ast: import('../md-ast/types.js').MdBlockNode;
 
   if (objType === 'sheet') {
     // 独立 sheet 流程：有 sheetId 时拼接为 token_sheetId 格式

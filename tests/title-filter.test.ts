@@ -5,8 +5,8 @@ import {
   createTitleFilter,
   extractHeadingText,
   getHeadingLevel,
-} from '../src/title-filter.js';
-import type { DocxBlock } from '../src/types.js';
+} from '../src/lib/title-filter.js';
+import type { DocxBlock } from '../src/lib/types.js';
 
 // ─── Helper: 创建模拟 DocxBlock ─────────────────────────────────────────────
 

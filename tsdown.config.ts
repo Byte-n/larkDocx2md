@@ -1,7 +1,7 @@
 import { defineConfig } from 'tsdown'
 
 export default defineConfig({
-  entry: ['src/cli.ts', 'src/converter.ts'],
+  entry: { cli: 'src/cli.ts', converter: 'src/lib/converter.ts' },
   format: ['esm'],
   outDir: 'dist',
   clean: true,

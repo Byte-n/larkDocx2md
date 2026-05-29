@@ -1,5 +1,5 @@
 import type { BlockParser } from '../parser.js';
-import type { DocxBlock } from '../../types.js';
+import type { DocxBlock } from '../../lib/types.js';
 import type { MdBlockNode } from '../types.js';
 
 export const imageParser: BlockParser = {

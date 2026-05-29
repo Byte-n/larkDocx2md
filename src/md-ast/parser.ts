@@ -1,5 +1,5 @@
 import { Registry } from '../core/registry.js';
-import type { DocInfo, DocxBlock, TextBody, TextElement } from '../types.js';
+import type { DocInfo, DocxBlock, TextBody, TextElement } from '../lib/types.js';
 import type { MdBlockNode, MdInlineNode } from './types.js';
 
 export interface BlockParser {

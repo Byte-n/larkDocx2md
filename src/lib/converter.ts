@@ -2,10 +2,10 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import { createClient } from './client.js';
-import { Parser } from './md-ast/parser.js';
-import { registerBuiltinParsers } from './md-ast/parsers/index.js';
-import { MdSerializer, registerBuiltinSerializers } from './md-ast/serializer.js';
-import { MdTransformer } from './md-ast/transformer.js';
+import { Parser } from '../md-ast/parser.js';
+import { registerBuiltinParsers } from '../md-ast/parsers/index.js';
+import { MdSerializer, registerBuiltinSerializers } from '../md-ast/serializer.js';
+import { MdTransformer } from '../md-ast/transformer.js';
 import { createLogger } from './logger.js';
 import type { ConvertOptions, ConvertResult, DocxBlock } from './types.js';
 import {
@@ -13,8 +13,7 @@ import {
   createTitleBlockIdFilter,
   type TitleFilterResult,
 } from './title-filter.js';
-import { serializeYaml } from './whiteboard/yaml/serialize.js';
-import { buildTitleTree } from './get-titles.js';
+import { serializeTitlesTextDocument } from './get-titles.js';
 import { parseWikiUrl } from './url.js';
 
 // 保留 “parseWikiUrl from converter” 公开 API（供外部代码 / 测试向后兼容）
@@ -44,7 +43,7 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
     objType = 'sheet';
   }
 
-  let ast: import('./md-ast/types.js').MdBlockNode;
+  let ast: import('../md-ast/types.js').MdBlockNode;
 
   if (objType === 'sheet') {
     // 独立 sheet 流程：有 sheetId 时拼接为 token_sheetId 格式
@@ -77,14 +76,30 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
     ast = parser.parse(doc, blocks);
   }
 
+  const serializer = createMarkdownSerializer();
+  const sourceType = objType === 'sheet' ? 'sheet' : 'docx';
+
+  // 先按当前 AST 做一次轻量 markdown 行数检查，避免纯文本大文档继续下载图片/画板/表格。
+  assertOutputLineLimit({
+    markdown: serializer.serialize(ast, { sourceType }),
+    maxOutputLines: opts.maxOutputLines,
+    hasTitleFilter: hasTitleFilter(opts),
+    stage: 'initial markdown',
+  });
+
   // 异步后处理
   const transformer = new MdTransformer(client, opts, objType === 'sheet' ? 'sheet' : 'docx');
   await transformer.transform(ast);
 
   // 序列化为 markdown
-  const serializer = new MdSerializer();
-  registerBuiltinSerializers(serializer);
-  const markdown = serializer.serialize(ast, { sourceType: objType === 'sheet' ? 'sheet' : 'docx' });
+  const markdown = serializer.serialize(ast, { sourceType });
+
+  assertOutputLineLimit({
+    markdown,
+    maxOutputLines: opts.maxOutputLines,
+    hasTitleFilter: hasTitleFilter(opts),
+    stage: 'final markdown',
+  });
 
   // 输出：非 agent 模式、或 agent='local' 模式都需要落盘
   let filePath: string | undefined;
@@ -110,15 +125,47 @@ function createDocxFilter (opts: ConvertOptions): {
   return null;
 }
 
-function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilterResult, url: string, docToken: string): string {
+function createMarkdownSerializer (): MdSerializer {
+  const serializer = new MdSerializer();
+  registerBuiltinSerializers(serializer);
+  return serializer;
+}
+
+function hasTitleFilter (opts: ConvertOptions): boolean {
+  return Boolean(opts.filterTitle || opts.filterTitleBlockId);
+}
+
+export function countMarkdownLines (markdown: string): number {
+  if (!markdown) return 0;
+  return markdown.split('\n').length;
+}
+
+export function assertOutputLineLimit (params: {
+  markdown: string;
+  maxOutputLines?: number;
+  hasTitleFilter: boolean;
+  stage: string;
+}): void {
+  if (!params.maxOutputLines || params.hasTitleFilter) return;
+  const lineCount = countMarkdownLines(params.markdown);
+  if (lineCount <= params.maxOutputLines) return;
+
+  throw new Error(
+    `Markdown output has ${lineCount} lines after ${params.stage}, exceeding ${params.maxOutputLines}. ` +
+    `Please narrow the document with a heading filter: run get-titles to find the heading, then retry dl with --filter-title-block-id.`,
+  );
+}
+
+export function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilterResult, _url: string, _docToken: string): string {
   let target: string;
   if (opts.filterTitleBlockId) target = `block id "${opts.filterTitleBlockId}"`;
   else target = `"${opts.filterTitle}"`;
+
   let msg = `No heading matched ${target}. Please verify the heading text/id.`;
+
   if (result.availableHeadings.length > 0) {
-    const tree = buildTitleTree(result.availableHeadings);
-    const yaml = serializeYaml({ url, docToken, titles: tree });
-    msg += `\n\nFull title list of the document:\n\n${yaml}`;
+    const text = serializeTitlesTextDocument(result.availableHeadings);
+    msg += `\n\nFull title list of the document:\n\n${text}`;
   }
   return msg;
 }

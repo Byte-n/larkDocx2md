@@ -1,4 +1,4 @@
-import type { WhiteboardNode } from '../types.js';
+import type { WhiteboardNode } from '../lib/types.js';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 

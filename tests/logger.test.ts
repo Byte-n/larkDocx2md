@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { createLogger, setLogLevel } from '../src/logger.js';
+import { createLogger, setLogLevel } from '../src/lib/logger.js';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 
 describe('logger', () => {

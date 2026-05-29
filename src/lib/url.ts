@@ -13,7 +13,11 @@ export interface ParsedFeishuUrl {
 
 export function parseWikiUrl (url: string): ParsedFeishuUrl {
   const m = url.match(/^https:\/\/[\w.-]+\/(docs|docx|wiki|sheets)\/([a-zA-Z0-9]+)/);
-  if (!m) throw new Error('Invalid feishu document URL');
+  if (!m) {
+    throw new Error(
+      'Invalid Feishu/Lark document URL. Expected an HTTPS URL like https://*.feishu.cn/wiki/<token>, https://*.feishu.cn/docx/<token>, https://*.feishu.cn/docs/<token>, or https://*.feishu.cn/sheets/<token>.'
+    );
+  }
   // 解析 ?sheet=XXX 查询参数（仅对 sheets 类型有意义）
   const sheetId = new URL(url).searchParams.get('sheet') ?? undefined;
   return { docType: m[1]!, docToken: m[2]!, sheetId };

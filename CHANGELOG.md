@@ -1,13 +1,59 @@
 # Changelog
 
+## 0.6.0
+
+### Features
+
+- **`--url` 参数**：`download` / `dl` 与 `get-titles` 支持显式传入 `--url <url>`，原位置参数仍兼容但会提示废弃，便于脚本和 Agent 统一命令形态
+- **Markdown 输出行数限制**：新增 `--max-output-lines` 与 `LARK_DOCX2MD_MAX_OUTPUT_LINES`，未指定标题过滤时可限制输出规模；超限会提示先用 `get-titles` 获取标题，再补充标题过滤参数重试
+- **`get-titles` text 格式说明**：text 输出文件开头增加 YAML front matter，说明标题行格式与使用 `blockId` 继续过滤的命令
+
+### Fixed
+
+- **`get-titles` 非文档链接提示**：对 sheets 链接提前给出明确错误，避免继续进入不适用的标题读取流程
+- **飞书 URL 错误提示**：优化不支持链接的报错信息，明确支持的 wiki / docx / docs / sheets 链接类型
+
+### Changed
+
+- **`get-titles` 输出格式简化**：保留 `text` 与 `yaml` 两种输出格式，默认改为 `text`，减少 AI/脚本选择目标标题时的噪音
+- **Agent local 输出提示增强**：`--agent local` 输出文件路径时附带 Markdown 行数，便于判断是否需要进一步按标题过滤
+- **CLI 与公共库模块拆分**：将命令注册、参数解析、业务处理与 converter、client、logger、types、URL 解析、标题过滤等公共模块拆分整理，便于后续维护与测试
+- **Skill 文档迁移**：将 skill 使用说明迁移至 `skills/lark-docx2md/README.md`，并同步 `--agent local` 工作流
+
+## 0.6.0-beta.1
+
+### Changed
+
+- **CLI 模块拆分**：将命令注册、参数解析与业务处理拆分到 `src/cli` 模块，CLI 入口仅负责启动，便于后续维护与测试
+- **公共库目录调整**：将 converter、client、logger、types、URL 解析与标题过滤等公共模块迁移到 `src/lib`，并同步更新构建入口
+- **CLI 参数测试补充**：新增 CLI options 单元测试，覆盖 agent、白板格式、图片模式、标题过滤与输出行数限制等参数解析逻辑
+
+## 0.6.0-beta.0
+
+### Features
+
+- **`--url` 参数**：`download` / `dl` 与 `get-titles` 支持显式传入 `--url <url>`，原位置参数仍兼容但会提示废弃，便于脚本和 Agent 统一命令形态
+- **Markdown 输出行数限制**：新增 `--max-output-lines` 与 `LARK_DOCX2MD_MAX_OUTPUT_LINES`，未指定标题过滤时可限制输出规模；超限会提示先用 `get-titles` 获取标题，再补充标题过滤参数重试
+
+### Fixed
+
+- **`get-titles` 非文档链接提示**：对 sheets 链接提前给出明确错误，避免继续进入不适用的标题读取流程
+- **飞书 URL 错误提示**：优化不支持链接的报错信息，明确支持的 wiki / docx / docs / sheets 链接类型
+
+### Changed
+
+- **`get-titles` 输出格式简化**：保留 `text` 与 `yaml` 两种输出格式，默认改为 `text`，减少 AI/脚本选择目标标题时的噪音
+- **Agent local 输出提示增强**：`--agent local` 输出文件路径时附带 Markdown 行数，便于判断是否需要进一步按标题过滤
+- **Skill 文档迁移**：将 skill 使用说明迁移至 `skills/lark-docx2md/README.md`，并同步 `--agent local` 工作流
+
 ## 0.5.3
 
 ### Features
 
 - **`--filter-title-block-id` 精确过滤**：新增 CLI 选项与 `ConvertOptions.filterTitleBlockId`，按 heading 块 id 严格匹配目标章节，彻底规避同名标题歧义；与 `--filter-title` 互斥
-- **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `yaml` / `yaml-tree` / `json` / `tree` / `text` 五种输出格式与 `--max-level` 限级；不支持 sheets
+- **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `text` / `yaml` 两种输出格式与 `--max-level` 限级；不支持 sheets
 - **`--filter-title` / `--filter-title-block-id` 注入父级标题**：命中深层标题时，自动把所有更高层级的祖先标题（仅 heading 块本身）按文档顺序一并输出，保留章节层级上下文；顶级命中不注入，跳级不伪造中间层，旁支兄弟自动排除
-- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `level` / `text`），`--filter-title` 未命中时错误信息改为与 `get-titles` 同形的 yaml 清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
+- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `level` / `text`），`--filter-title` 未命中时错误信息改为紧凑 text 标题清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
 
 ### Fixed
 

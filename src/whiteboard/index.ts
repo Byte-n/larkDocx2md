@@ -1,5 +1,5 @@
 import type { BBox, WNode } from './types.js';
-import type { SvgBackground } from '../types.js';
+import type { SvgBackground } from '../lib/types.js';
 import { PADDING, r } from './utils.js';
 import { renderDefs } from './defs.js';
 import { DefaultRenderContext } from './render-context.js';
@@ -69,7 +69,7 @@ export function prepareNodeContext (nodes: WNode[]): NodeContext {
 
 // ─── Main Entry ──────────────────────────────────────────────────────────────
 
-export type { SvgBackground } from '../types.js';
+export type { SvgBackground } from '../lib/types.js';
 
 /**
  * 将飞书画板节点数组转换为 SVG 字符串

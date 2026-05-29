@@ -1,7 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { parseWikiUrl } from '../src/converter.js';
-import { buildTitleTree } from '../src/get-titles.js';
-import type { HeadingInfo } from '../src/title-filter.js';
+import { assertOutputLineLimit, buildFilterErrorMessage, countMarkdownLines, parseWikiUrl } from '../src/lib/converter.js';
+import {
+  GET_TITLES_NON_DOCUMENT_HINT,
+  buildTitleTree,
+  getTitles,
+  serializeTitlesText,
+  serializeTitlesTextDocument,
+} from '../src/lib/get-titles.js';
+import type { HeadingInfo } from '../src/lib/title-filter.js';
 
 describe('parseWikiUrl', () => {
   it('parses docx URL', () => {
@@ -35,7 +41,7 @@ describe('parseWikiUrl', () => {
   });
 
   it('throws on invalid URL', () => {
-    expect(() => parseWikiUrl('https://example.com/invalid/path')).toThrow('Invalid feishu document URL');
+    expect(() => parseWikiUrl('https://example.com/invalid/path')).toThrow('Expected an HTTPS URL like');
     expect(() => parseWikiUrl('not a url')).toThrow();
   });
 
@@ -90,5 +96,94 @@ describe('buildTitleTree', () => {
     ];
     const tree = buildTitleTree(flat);
     expect(tree).toHaveLength(2);
+  });
+});
+
+describe('serializeTitlesText', () => {
+  it('serializes headings as compact markdown-like lines', () => {
+    expect(serializeTitlesText([
+      h('h1', 1, 'A'),
+      h('h2', 2, 'B'),
+      h('h7', 7, 'Deep'),
+    ])).toBe('# [h1] A\n## [h2] B\n####### [h7] Deep\n');
+  });
+
+  it('returns empty output for empty headings', () => {
+    expect(serializeTitlesText([])).toBe('');
+  });
+
+  it('serializes a complete text document with front matter', () => {
+    expect(serializeTitlesTextDocument([
+      h('h1', 1, 'A'),
+      h('h2', 2, 'B'),
+    ])).toBe(`---
+format: lark-docx2md.titles
+line_format: <markdown_heading> [<blockId>] <title>
+use_block_id_with: npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"
+---
+
+# [h1] A
+## [h2] B
+`);
+  });
+});
+
+describe('getTitles', () => {
+  it('tells users to call dl directly for sheets links', async () => {
+    await expect(getTitles({
+      appId: '',
+      appSecret: '',
+      url: 'https://example.feishu.cn/sheets/abc123',
+    })).rejects.toThrow(GET_TITLES_NON_DOCUMENT_HINT);
+  });
+});
+
+describe('output line limit', () => {
+  it('counts markdown lines directly', () => {
+    expect(countMarkdownLines('')).toBe(0);
+    expect(countMarkdownLines('a\nb\n\n')).toBe(4);
+    expect(countMarkdownLines('a\r\nb\rc')).toBe(2);
+  });
+
+  it('throws when unfiltered output exceeds the limit', () => {
+    expect(() => assertOutputLineLimit({
+      markdown: 'a\nb\nc',
+      maxOutputLines: 2,
+      hasTitleFilter: false,
+      stage: 'final markdown',
+    })).toThrow('--filter-title-block-id');
+  });
+
+  it('does not apply the limit when a title filter is present', () => {
+    expect(() => assertOutputLineLimit({
+      markdown: 'a\nb\nc',
+      maxOutputLines: 2,
+      hasTitleFilter: true,
+      stage: 'final markdown',
+    })).not.toThrow();
+  });
+});
+
+describe('buildFilterErrorMessage', () => {
+  it('prints available headings in compact text format', () => {
+    const msg = buildFilterErrorMessage(
+      { appId: '', appSecret: '', url: 'https://example.feishu.cn/docx/doc', filterTitle: 'Missing' } as any,
+      {
+        blocks: [],
+        matched: false,
+        availableHeadings: [
+          h('h1', 1, 'A'),
+          h('h2', 2, 'B'),
+        ],
+      },
+      'https://example.feishu.cn/docx/doc',
+      'doc',
+    );
+
+    expect(msg).toContain('Full title list of the document:\n\n---\nformat: lark-docx2md.titles');
+    expect(msg).toContain('npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"');
+    expect(msg).toContain('# [h1] A\n## [h2] B\n');
+    expect(msg).not.toContain('blockId:');
+    expect(msg).not.toContain('titles:');
   });
 });

@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { Parser } from '../../src/md-ast/parser.js';
 import { registerBuiltinParsers } from '../../src/md-ast/parsers/index.js';
 import { MdSerializer, registerBuiltinSerializers } from '../../src/md-ast/serializer.js';
-import type { DocxBlock, DocInfo } from '../../src/types.js';
+import type { DocxBlock, DocInfo } from '../../src/lib/types.js';
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 

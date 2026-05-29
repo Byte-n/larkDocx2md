@@ -17,13 +17,13 @@
 > 命令所需权限见下 ‘飞书自创应用需要的权限’
 
 ```bash
-npx -y lark-docx2md@latest download https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
+npx -y lark-docx2md@latest download --url https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
 ```
 
 > `download` 命令支持别名 `dl`，以下写法等效：
 >
 > ```bash
-> npx -y lark-docx2md@latest dl https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
+> npx -y lark-docx2md@latest dl --url https://xxx.feishu.cn/wiki/xxx --app-id cli_xxx --app-secret xxxx
 > ```
 
 或先设置环境变量（命令行参数可省略）：
@@ -31,14 +31,14 @@ npx -y lark-docx2md@latest download https://xxx.feishu.cn/wiki/xxx --app-id cli_
 ```bash
 export LARK_DOCX2MD_APP_ID=<APP_ID>
 export LARK_DOCX2MD_APP_SECRET=<APP_SECRET>
-npx -y lark-docx2md@latest download <url>
+npx -y lark-docx2md@latest download --url <url>
 ```
 
 ## 参数
 
 | 参数                       | 说明                                        | 环境变量                         | 默认值                   |
 |--------------------------|-------------------------------------------|------------------------------|-----------------------|
-| `<url>`                  | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`，支持 `?sheet=<sheetId>` 指定子表） | —                            | —                     |
+| `--url <url>`            | 飞书文档链接（`https://*.feishu.cn/wiki/*` 或 `/sheets/*`，支持 `?sheet=<sheetId>` 指定子表） | —                            | —                     |
 | `--app-id <id>`          | 飞书应用 App ID                               | `LARK_DOCX2MD_APP_ID`        | —                     |
 | `--app-secret <secret>`  | 飞书应用 App Secret                           | `LARK_DOCX2MD_APP_SECRET`    | —                     |
 | `-o, --output <dir>`     | 输出目录                                      | `LARK_DOCX2MD_OUTPUT`        | `./larkDocx2mdOutput` |
@@ -46,6 +46,7 @@ npx -y lark-docx2md@latest download <url>
 | `--image-mode <mode>`    | 图片处理模式：`local`（下载到本地）或 `online`（24h 临时链接） | `LARK_DOCX2MD_IMAGE_MODE`    | `local`               |
 | `--filter-title <title>` | 按标题过滤：仅转换匹配标题及其下级内容（匹配到同级或更高级标题时截止） | —                            | —                     |
 | `--filter-title-block-id <id>` | 按 heading 块 id 精确过滤（无同名歧义），通常配合 `get-titles` 子命令获取；与 `--filter-title` 互斥 | —                            | —                     |
+| `--max-output-lines <n>` | 未指定标题过滤时允许输出的最大 Markdown 行数；超过会报错并提示补充标题过滤参数 | `LARK_DOCX2MD_MAX_OUTPUT_LINES` | —                     |
 | `--wb-format <format>`   | 画板输出格式：`base64`、`inline-svg`、`svg`、`yaml` | `LARK_DOCX2MD_WB_FORMAT`     | `svg`（agent 下默认 `yaml`） |
 | `--wb-bg <style>`        | 画板 SVG 背景：`none`、`dot` 或颜色值如 `#fff`       | `LARK_DOCX2MD_WB_BG`         | `none`                |
 | `--wb-image-mode <mode>` | 画板图片模式：`online`、`base64` 或 `local`        | `LARK_DOCX2MD_WB_IMAGE_MODE` | `local`               |
@@ -55,8 +56,9 @@ npx -y lark-docx2md@latest download <url>
 > - `--agent`（在线）：强制 `--image-mode=online`、`--wb-image-mode=online`；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；转换完成后 Markdown 直接通过 stdout 输出。
 > - `--agent local`：强制 `--image-mode=local`、`--wb-image-mode=local`（Markdown、图片、画板中的图片均落盘）；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；stdout 输出引导 AI 读取文件的提示词（包含绝对路径）。
 > - 非 agent 模式下 `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
-> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 yaml 清单。
+> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 text 清单。
 > - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
+> - `--max-output-lines`：仅在未指定 `--filter-title` / `--filter-title-block-id` 时生效；纯 Markdown 阶段先检查一次，图片、画板、表格等解析完成后再检查一次。超过限制时直接报错，提示先用 `get-titles` 获取标题，再补充标题过滤参数重试。
 > - **命中深层标题时自动注入父级标题（仅 heading 块本身）**：两个过滤参数均会按文档顺序补齐包含路径上的顶层→该标题的所有祖先标题，以保留章节层级上下文；不会引入旁支兄弟或伪造跳级。
 
 ## 子命令：`get-titles`
@@ -64,17 +66,17 @@ npx -y lark-docx2md@latest download <url>
 列出 docx/wiki 文档全部标题（不支持 sheets），配合 `--filter-title-block-id` 使用可避开同名歧义。
 
 ```bash
-npx -y lark-docx2md@latest get-titles --agent <url>
+npx -y lark-docx2md@latest get-titles --agent --url <url>
 ```
 
 | 参数                    | 说明                                                                                       | 默认值    |
 |-----------------------|------------------------------------------------------------------------------------------|--------|
-| `<url>`               | 飞书 wiki/docx URL                                                                       | —      |
+| `--url <url>`         | 飞书 wiki/docx URL                                                                       | —      |
 | `--max-level <n>`     | 仅输出 `level <= n` 的标题（1~9）                                                     | `9`    |
-| `--format <format>`   | 输出格式：`yaml`（扁平） \| `yaml-tree`（嵌套） \| `json` \| `tree`（json 嵌套） \| `text`（缩进的 markdown 标题） | `yaml` |
+| `--format <format>`   | 输出格式：`text`（YAML front matter + `## [blockId] 标题`） \| `yaml`（嵌套）               | `text` |
 | `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
 
-输出包含 `blockId` / `level` / `text`，可被 AI 直接消费用于选择目标章节（嵌套关系由 `yaml-tree` / `tree` 格式天然表达）。
+`text` 格式文件开头包含 YAML front matter 格式说明；正文用 `#` 数量保留标题层级，并把 `blockId` 放在标题旁，便于 AI 直接选择目标章节。
 
 ## 功能
 
@@ -126,10 +128,10 @@ npx -y lark-docx2md@latest get-titles --agent <url>
 
 ```bash
 # 直接运行（无需构建），download 可使用别名 dl
-pnpm dev download --app-id <APP_ID> --app-secret <APP_SECRET> <url>
+pnpm dev download --app-id <APP_ID> --app-secret <APP_SECRET> --url <url>
 
 # 或使用环境变量
-LARK_DOCX2MD_APP_ID=<APP_ID> LARK_DOCX2MD_APP_SECRET=<APP_SECRET> pnpm dev dl <url>
+LARK_DOCX2MD_APP_ID=<APP_ID> LARK_DOCX2MD_APP_SECRET=<APP_SECRET> pnpm dev dl --url <url>
 
 # 构建为 JS
 pnpm build

@@ -6,6 +6,7 @@ import { createHeadingCollector, type HeadingInfo } from './title-filter.js';
 import type { AgentMode } from './types.js';
 
 const logger = createLogger('get-titles');
+export const GET_TITLES_NON_DOCUMENT_HINT = 'The input link is not a document. There is no need to call get-titles; call dl directly with the same URL.';
 
 // ─── Options & Result ───────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export interface GetTitlesResult {
 export async function getTitles (opts: GetTitlesOptions): Promise<GetTitlesResult> {
   const { docType, docToken: rawToken } = parseWikiUrl(opts.url);
   if (docType === 'sheets') {
-    throw new Error('get-titles does not support spreadsheets, only docx/wiki documents are supported');
+    throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
   }
 
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
@@ -41,7 +42,7 @@ export async function getTitles (opts: GetTitlesOptions): Promise<GetTitlesResul
     docToken = node.obj_token!;
     logger.info('Resolved wiki node:', node.obj_type, docToken);
     if (node.obj_type === 'sheet') {
-      throw new Error('get-titles does not support spreadsheets (wiki node points to a spreadsheet), only docx/wiki documents are supported');
+      throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
     }
   }
 
@@ -59,6 +60,16 @@ export interface TitleTreeNode extends HeadingInfo {
   children?: TitleTreeNode[];
 }
 
+export type GetTitlesFormat = 'yaml' | 'text';
+
+export const TITLES_TEXT_FORMAT_COMMENT = `---
+format: lark-docx2md.titles
+line_format: <markdown_heading> [<blockId>] <title>
+use_block_id_with: npx -y lark-docx2md@latest dl --filter-title-block-id "<blockId>" --url "<url>"
+---
+
+`;
+
 /** 按 level 栈式回溯将扁平标题列表转为树（容忍跳级标题）。 */
 export function buildTitleTree (titles: HeadingInfo[]): TitleTreeNode[] {
   const roots: TitleTreeNode[] = [];
@@ -75,4 +86,17 @@ export function buildTitleTree (titles: HeadingInfo[]): TitleTreeNode[] {
     stack.push(node);
   }
   return roots;
+}
+
+/** 输出紧凑标题清单：用 markdown heading marker 表达层级，并把 blockId 放在标题旁。 */
+export function serializeTitlesText (titles: HeadingInfo[]): string {
+  if (titles.length === 0) return '';
+  return titles
+    .map(t => `${'#'.repeat(t.level)} [${t.blockId}] ${t.text}`)
+    .join('\n') + '\n';
+}
+
+/** 输出面向用户/Agent 读取的完整 text 文档，文件开头包含格式说明。 */
+export function serializeTitlesTextDocument (titles: HeadingInfo[]): string {
+  return TITLES_TEXT_FORMAT_COMMENT + serializeTitlesText(titles);
 }

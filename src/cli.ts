@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { Command } from 'commander';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
-import { convert } from './converter.js';
+import { convert, countMarkdownLines } from './converter.js';
 import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from './get-titles.js';
 import { setLogLevel } from './logger.js';
 import { parseWikiUrl } from './url.js';
@@ -35,6 +35,13 @@ function resolveAgentMode (raw: boolean | string | undefined): { value: AgentMod
   return { value: false, error: `Invalid --agent value "${raw}", must be "stdout" or "local"` };
 }
 
+function missingCredentialsMessage (agentEnabled: boolean): string {
+  if (agentEnabled) {
+    return 'Missing credentials: pass --app-id/--app-secret or configure credentials in the environment.';
+  }
+  return 'Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET';
+}
+
 program
   .command('download')
   .alias('dl')
@@ -49,8 +56,9 @@ program
   .option('--image-mode <mode>', 'Image handling mode: "local" or "online" (or LARK_DOCX2MD_IMAGE_MODE)')
   .option('--filter-title <title>', 'Only convert the section matching this heading title (single title, first match wins on duplicates)')
   .option('--filter-title-block-id <id>', 'Only convert the section whose heading block id matches (most precise; obtain from get-titles)')
+  .option('--max-output-lines <n>', 'Maximum allowed markdown lines when no heading filter is specified; errors if exceeded (or LARK_DOCX2MD_MAX_OUTPUT_LINES)')
   .argument('<url>', 'Feishu wiki document URL: https://*.feishu.cn/wiki/*')
-  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string; filterTitle?: string; filterTitleBlockId?: string }) => {
+  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; agent?: boolean | string; imageMode?: string; wbImageMode?: string; wbBg?: SvgBackground; wbFormat?: string; filterTitle?: string; filterTitleBlockId?: string; maxOutputLines?: string }) => {
     // ─── 环境变量默认值（直接指定 > 环境变量 > 内置默认值）────────────────
     opts.appId = opts.appId ?? process.env.LARK_DOCX2MD_APP_ID;
     opts.appSecret = opts.appSecret ?? process.env.LARK_DOCX2MD_APP_SECRET;
@@ -70,6 +78,7 @@ program
     opts.wbFormat = opts.wbFormat ?? process.env.LARK_DOCX2MD_WB_FORMAT;
     opts.wbBg = opts.wbBg ?? process.env.LARK_DOCX2MD_WB_BG ?? 'none';
     opts.wbImageMode = opts.wbImageMode ?? process.env.LARK_DOCX2MD_WB_IMAGE_MODE ?? 'local';
+    opts.maxOutputLines = opts.maxOutputLines ?? process.env.LARK_DOCX2MD_MAX_OUTPUT_LINES;
 
     // 设置 wb-format 默认值：--agent local 默认 inline-svg（兼容本地画板图片），--agent stdout 默认 yaml，其余 svg
     if (!opts.wbFormat) {
@@ -111,11 +120,18 @@ program
     if (opts.filterTitle && opts.filterTitleBlockId) {
       program.error('--filter-title and --filter-title-block-id are mutually exclusive; choose one');
     }
+    let maxOutputLines: number | undefined;
+    if (opts.maxOutputLines !== undefined) {
+      maxOutputLines = parseInt(opts.maxOutputLines, 10);
+      if (!Number.isInteger(maxOutputLines) || maxOutputLines < 1 || `${maxOutputLines}` !== opts.maxOutputLines.trim()) {
+        program.error(`Invalid --max-output-lines / LARK_DOCX2MD_MAX_OUTPUT_LINES "${opts.maxOutputLines}", must be a positive integer`);
+      }
+    }
 
     const appId = opts.appId!;
     const appSecret = opts.appSecret!;
     if (!appId || !appSecret) {
-      program.error('Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET');
+      program.error(missingCredentialsMessage(agentEnabled));
     }
 
     const result = await convert({
@@ -130,13 +146,16 @@ program
       agent: opts.agent as AgentMode | false,
       filterTitle: opts.filterTitle?.trim(),
       filterTitleBlockId: opts.filterTitleBlockId?.trim(),
+      maxOutputLines,
     });
 
     if (agentLocal) {
       // 本地模式：输出引导 AI 读取文件的提示词（绝对路径）
+      const lineCount = countMarkdownLines(result.markdown);
       process.stdout.write(
         `**The Feishu document has been downloaded to the following absolute path:**\n\n` +
         `\`${result.filePath}\`\n\n` +
+        `**Entry file line count:** ${lineCount}\n\n` +
         `**Read this file to access the full markdown content.**\n`,
       );
     } else if (agentStdout) {
@@ -180,7 +199,7 @@ program
     const appId = opts.appId!;
     const appSecret = opts.appSecret!;
     if (!appId || !appSecret) {
-      program.error('Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET');
+      program.error(missingCredentialsMessage(agentEnabled));
     }
 
     const result = await getTitles({
@@ -198,9 +217,11 @@ program
       fs.mkdirSync(opts.output, { recursive: true });
       const filePath = path.resolve(opts.output, `${result.docToken}.titles.yaml`);
       fs.writeFileSync(filePath, content);
+      const lineCount = countMarkdownLines(content);
       process.stdout.write(
         `**The Feishu document titles have been downloaded to the following absolute path:**\n\n` +
         `\`${filePath}\`\n\n` +
+        `**Entry file line count:** ${lineCount}\n\n` +
         `**Read this file to access the full titles list.**\n`,
       );
     } else {

@@ -77,14 +77,30 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
     ast = parser.parse(doc, blocks);
   }
 
+  const serializer = createMarkdownSerializer();
+  const sourceType = objType === 'sheet' ? 'sheet' : 'docx';
+
+  // 先按当前 AST 做一次轻量 markdown 行数检查，避免纯文本大文档继续下载图片/画板/表格。
+  assertOutputLineLimit({
+    markdown: serializer.serialize(ast, { sourceType }),
+    maxOutputLines: opts.maxOutputLines,
+    hasTitleFilter: hasTitleFilter(opts),
+    stage: 'initial markdown',
+  });
+
   // 异步后处理
   const transformer = new MdTransformer(client, opts, objType === 'sheet' ? 'sheet' : 'docx');
   await transformer.transform(ast);
 
   // 序列化为 markdown
-  const serializer = new MdSerializer();
-  registerBuiltinSerializers(serializer);
-  const markdown = serializer.serialize(ast, { sourceType: objType === 'sheet' ? 'sheet' : 'docx' });
+  const markdown = serializer.serialize(ast, { sourceType });
+
+  assertOutputLineLimit({
+    markdown,
+    maxOutputLines: opts.maxOutputLines,
+    hasTitleFilter: hasTitleFilter(opts),
+    stage: 'final markdown',
+  });
 
   // 输出：非 agent 模式、或 agent='local' 模式都需要落盘
   let filePath: string | undefined;
@@ -108,6 +124,37 @@ function createDocxFilter (opts: ConvertOptions): {
   if (opts.filterTitleBlockId) return createTitleBlockIdFilter({ blockId: opts.filterTitleBlockId });
   if (opts.filterTitle) return createTitleFilter({ title: opts.filterTitle });
   return null;
+}
+
+function createMarkdownSerializer (): MdSerializer {
+  const serializer = new MdSerializer();
+  registerBuiltinSerializers(serializer);
+  return serializer;
+}
+
+function hasTitleFilter (opts: ConvertOptions): boolean {
+  return Boolean(opts.filterTitle || opts.filterTitleBlockId);
+}
+
+export function countMarkdownLines (markdown: string): number {
+  if (!markdown) return 0;
+  return markdown.split('\n').length;
+}
+
+export function assertOutputLineLimit (params: {
+  markdown: string;
+  maxOutputLines?: number;
+  hasTitleFilter: boolean;
+  stage: string;
+}): void {
+  if (!params.maxOutputLines || params.hasTitleFilter) return;
+  const lineCount = countMarkdownLines(params.markdown);
+  if (lineCount <= params.maxOutputLines) return;
+
+  throw new Error(
+    `Markdown output has ${lineCount} lines after ${params.stage}, exceeding --max-output-lines ${params.maxOutputLines}. ` +
+    `Please narrow the document with a heading filter: run get-titles to find the heading, then retry dl with --filter-title-block-id.`,
+  );
 }
 
 function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilterResult, url: string, docToken: string): string {

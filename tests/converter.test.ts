@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseWikiUrl } from '../src/converter.js';
+import { assertOutputLineLimit, countMarkdownLines, parseWikiUrl } from '../src/converter.js';
 import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from '../src/get-titles.js';
 import type { HeadingInfo } from '../src/title-filter.js';
 
@@ -100,5 +100,31 @@ describe('getTitles', () => {
       appSecret: '',
       url: 'https://example.feishu.cn/sheets/abc123',
     })).rejects.toThrow(GET_TITLES_NON_DOCUMENT_HINT);
+  });
+});
+
+describe('output line limit', () => {
+  it('counts markdown lines directly', () => {
+    expect(countMarkdownLines('')).toBe(0);
+    expect(countMarkdownLines('a\nb\n\n')).toBe(4);
+    expect(countMarkdownLines('a\r\nb\rc')).toBe(2);
+  });
+
+  it('throws when unfiltered output exceeds the limit', () => {
+    expect(() => assertOutputLineLimit({
+      markdown: 'a\nb\nc',
+      maxOutputLines: 2,
+      hasTitleFilter: false,
+      stage: 'final markdown',
+    })).toThrow('--filter-title-block-id');
+  });
+
+  it('does not apply the limit when a title filter is present', () => {
+    expect(() => assertOutputLineLimit({
+      markdown: 'a\nb\nc',
+      maxOutputLines: 2,
+      hasTitleFilter: true,
+      stage: 'final markdown',
+    })).not.toThrow();
   });
 });

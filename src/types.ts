@@ -54,6 +54,8 @@ export interface ConvertOptions {
   filterTitle?: string;
   /** 按 heading 块 id 过滤：最精确，避开一切同名歧义 */
   filterTitleBlockId?: string;
+  /** 未指定标题过滤时，允许输出的最大 markdown 行数 */
+  maxOutputLines?: number;
 }
 
 export interface ConvertResult {

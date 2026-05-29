@@ -46,6 +46,7 @@ npx -y lark-docx2md@latest download <url>
 | `--image-mode <mode>`    | 图片处理模式：`local`（下载到本地）或 `online`（24h 临时链接） | `LARK_DOCX2MD_IMAGE_MODE`    | `local`               |
 | `--filter-title <title>` | 按标题过滤：仅转换匹配标题及其下级内容（匹配到同级或更高级标题时截止） | —                            | —                     |
 | `--filter-title-block-id <id>` | 按 heading 块 id 精确过滤（无同名歧义），通常配合 `get-titles` 子命令获取；与 `--filter-title` 互斥 | —                            | —                     |
+| `--max-output-lines <n>` | 未指定标题过滤时允许输出的最大 Markdown 行数；超过会报错并提示补充标题过滤参数 | `LARK_DOCX2MD_MAX_OUTPUT_LINES` | —                     |
 | `--wb-format <format>`   | 画板输出格式：`base64`、`inline-svg`、`svg`、`yaml` | `LARK_DOCX2MD_WB_FORMAT`     | `svg`（agent 下默认 `yaml`） |
 | `--wb-bg <style>`        | 画板 SVG 背景：`none`、`dot` 或颜色值如 `#fff`       | `LARK_DOCX2MD_WB_BG`         | `none`                |
 | `--wb-image-mode <mode>` | 画板图片模式：`online`、`base64` 或 `local`        | `LARK_DOCX2MD_WB_IMAGE_MODE` | `local`               |
@@ -57,6 +58,7 @@ npx -y lark-docx2md@latest download <url>
 > - 非 agent 模式下 `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
 > - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 yaml 清单。
 > - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
+> - `--max-output-lines`：仅在未指定 `--filter-title` / `--filter-title-block-id` 时生效；纯 Markdown 阶段先检查一次，图片、画板、表格等解析完成后再检查一次。超过限制时直接报错，提示先用 `get-titles` 获取标题，再补充标题过滤参数重试。
 > - **命中深层标题时自动注入父级标题（仅 heading 块本身）**：两个过滤参数均会按文档顺序补齐包含路径上的顶层→该标题的所有祖先标题，以保留章节层级上下文；不会引入旁支兄弟或伪造跳级。
 
 ## 子命令：`get-titles`

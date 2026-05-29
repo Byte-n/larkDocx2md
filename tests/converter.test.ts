@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { parseWikiUrl } from '../src/converter.js';
-import { buildTitleTree } from '../src/get-titles.js';
+import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from '../src/get-titles.js';
 import type { HeadingInfo } from '../src/title-filter.js';
 
 describe('parseWikiUrl', () => {
@@ -90,5 +90,15 @@ describe('buildTitleTree', () => {
     ];
     const tree = buildTitleTree(flat);
     expect(tree).toHaveLength(2);
+  });
+});
+
+describe('getTitles', () => {
+  it('tells users to call dl directly for sheets links', async () => {
+    await expect(getTitles({
+      appId: '',
+      appSecret: '',
+      url: 'https://example.feishu.cn/sheets/abc123',
+    })).rejects.toThrow(GET_TITLES_NON_DOCUMENT_HINT);
   });
 });

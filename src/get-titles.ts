@@ -6,6 +6,7 @@ import { createHeadingCollector, type HeadingInfo } from './title-filter.js';
 import type { AgentMode } from './types.js';
 
 const logger = createLogger('get-titles');
+export const GET_TITLES_NON_DOCUMENT_HINT = 'The input link is not a document. There is no need to call get-titles; call dl directly with the same URL.';
 
 // ─── Options & Result ───────────────────────────────────────────────────────
 
@@ -29,7 +30,7 @@ export interface GetTitlesResult {
 export async function getTitles (opts: GetTitlesOptions): Promise<GetTitlesResult> {
   const { docType, docToken: rawToken } = parseWikiUrl(opts.url);
   if (docType === 'sheets') {
-    throw new Error('get-titles does not support spreadsheets, only docx/wiki documents are supported');
+    throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
   }
 
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
@@ -41,7 +42,7 @@ export async function getTitles (opts: GetTitlesOptions): Promise<GetTitlesResul
     docToken = node.obj_token!;
     logger.info('Resolved wiki node:', node.obj_type, docToken);
     if (node.obj_type === 'sheet') {
-      throw new Error('get-titles does not support spreadsheets (wiki node points to a spreadsheet), only docx/wiki documents are supported');
+      throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
     }
   }
 

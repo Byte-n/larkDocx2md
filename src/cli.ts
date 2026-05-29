@@ -4,8 +4,9 @@ import * as path from 'node:path';
 import { Command } from 'commander';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import { convert } from './converter.js';
-import { buildTitleTree, getTitles } from './get-titles.js';
+import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from './get-titles.js';
 import { setLogLevel } from './logger.js';
+import { parseWikiUrl } from './url.js';
 import { serializeYaml } from './whiteboard/yaml/serialize.js';
 import type { SvgBackground, WbFormat, WbImageMode, AgentMode } from './types.js';
 
@@ -165,6 +166,11 @@ program
     const agentEnabled = opts.agent === 'stdout' || opts.agent === 'local';
     const agentLocal = opts.agent === 'local';
     if (agentEnabled) setLogLevel(LoggerLevel.error);
+
+    const parsedUrl = parseWikiUrl(url);
+    if (parsedUrl.docType === 'sheets') {
+      throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
+    }
 
     const maxLevel = parseInt(opts.maxLevel ?? '9', 10);
     if (!Number.isInteger(maxLevel) || maxLevel < 1 || maxLevel > 9) {

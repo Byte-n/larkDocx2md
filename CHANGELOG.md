@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0-beta.1
+
+### Changed
+
+- **CLI 模块拆分**：将命令注册、参数解析与业务处理拆分到 `src/cli` 模块，CLI 入口仅负责启动，便于后续维护与测试
+- **公共库目录调整**：将 converter、client、logger、types、URL 解析与标题过滤等公共模块迁移到 `src/lib`，并同步更新构建入口
+- **CLI 参数测试补充**：新增 CLI options 单元测试，覆盖 agent、白板格式、图片模式、标题过滤与输出行数限制等参数解析逻辑
+
 ## 0.6.0-beta.0
 
 ### Features

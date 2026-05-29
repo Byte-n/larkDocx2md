@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.6.0
+
+### Features
+
+- **`--url` 参数**：`download` / `dl` 与 `get-titles` 支持显式传入 `--url <url>`，原位置参数仍兼容但会提示废弃，便于脚本和 Agent 统一命令形态
+- **Markdown 输出行数限制**：新增 `--max-output-lines` 与 `LARK_DOCX2MD_MAX_OUTPUT_LINES`，未指定标题过滤时可限制输出规模；超限会提示先用 `get-titles` 获取标题，再补充标题过滤参数重试
+- **`get-titles` text 格式说明**：text 输出文件开头增加 YAML front matter，说明标题行格式与使用 `blockId` 继续过滤的命令
+
+### Fixed
+
+- **`get-titles` 非文档链接提示**：对 sheets 链接提前给出明确错误，避免继续进入不适用的标题读取流程
+- **飞书 URL 错误提示**：优化不支持链接的报错信息，明确支持的 wiki / docx / docs / sheets 链接类型
+
+### Changed
+
+- **`get-titles` 输出格式简化**：保留 `text` 与 `yaml` 两种输出格式，默认改为 `text`，减少 AI/脚本选择目标标题时的噪音
+- **Agent local 输出提示增强**：`--agent local` 输出文件路径时附带 Markdown 行数，便于判断是否需要进一步按标题过滤
+- **CLI 与公共库模块拆分**：将命令注册、参数解析、业务处理与 converter、client、logger、types、URL 解析、标题过滤等公共模块拆分整理，便于后续维护与测试
+- **Skill 文档迁移**：将 skill 使用说明迁移至 `skills/lark-docx2md/README.md`，并同步 `--agent local` 工作流
+
 ## 0.6.0-beta.1
 
 ### Changed

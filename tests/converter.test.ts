@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { assertOutputLineLimit, countMarkdownLines, parseWikiUrl } from '../src/converter.js';
-import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from '../src/get-titles.js';
+import { assertOutputLineLimit, buildFilterErrorMessage, countMarkdownLines, parseWikiUrl } from '../src/converter.js';
+import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles, serializeTitlesText } from '../src/get-titles.js';
 import type { HeadingInfo } from '../src/title-filter.js';
 
 describe('parseWikiUrl', () => {
@@ -93,6 +93,20 @@ describe('buildTitleTree', () => {
   });
 });
 
+describe('serializeTitlesText', () => {
+  it('serializes headings as compact markdown-like lines', () => {
+    expect(serializeTitlesText([
+      h('h1', 1, 'A'),
+      h('h2', 2, 'B'),
+      h('h7', 7, 'Deep'),
+    ])).toBe('# [h1] A\n## [h2] B\n####### [h7] Deep\n');
+  });
+
+  it('returns empty output for empty headings', () => {
+    expect(serializeTitlesText([])).toBe('');
+  });
+});
+
 describe('getTitles', () => {
   it('tells users to call dl directly for sheets links', async () => {
     await expect(getTitles({
@@ -126,5 +140,27 @@ describe('output line limit', () => {
       hasTitleFilter: true,
       stage: 'final markdown',
     })).not.toThrow();
+  });
+});
+
+describe('buildFilterErrorMessage', () => {
+  it('prints available headings in compact text format', () => {
+    const msg = buildFilterErrorMessage(
+      { appId: '', appSecret: '', url: 'https://example.feishu.cn/docx/doc', filterTitle: 'Missing' },
+      {
+        blocks: [],
+        matched: false,
+        availableHeadings: [
+          h('h1', 1, 'A'),
+          h('h2', 2, 'B'),
+        ],
+      },
+      'https://example.feishu.cn/docx/doc',
+      'doc',
+    );
+
+    expect(msg).toContain('Full title list of the document:\n\n# [h1] A\n## [h2] B\n');
+    expect(msg).not.toContain('blockId:');
+    expect(msg).not.toContain('titles:');
   });
 });

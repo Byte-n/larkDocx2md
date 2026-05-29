@@ -60,6 +60,8 @@ export interface TitleTreeNode extends HeadingInfo {
   children?: TitleTreeNode[];
 }
 
+export type GetTitlesFormat = 'yaml' | 'text';
+
 /** 按 level 栈式回溯将扁平标题列表转为树（容忍跳级标题）。 */
 export function buildTitleTree (titles: HeadingInfo[]): TitleTreeNode[] {
   const roots: TitleTreeNode[] = [];
@@ -76,4 +78,12 @@ export function buildTitleTree (titles: HeadingInfo[]): TitleTreeNode[] {
     stack.push(node);
   }
   return roots;
+}
+
+/** 输出紧凑标题清单：用 markdown heading marker 表达层级，并把 blockId 放在标题旁。 */
+export function serializeTitlesText (titles: HeadingInfo[]): string {
+  if (titles.length === 0) return '';
+  return titles
+    .map(t => `${'#'.repeat(t.level)} [${t.blockId}] ${t.text}`)
+    .join('\n') + '\n';
 }

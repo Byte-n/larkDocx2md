@@ -56,7 +56,7 @@ npx -y lark-docx2md@latest download <url>
 > - `--agent`（在线）：强制 `--image-mode=online`、`--wb-image-mode=online`；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；转换完成后 Markdown 直接通过 stdout 输出。
 > - `--agent local`：强制 `--image-mode=local`、`--wb-image-mode=local`（Markdown、图片、画板中的图片均落盘）；`--wb-format` 默认 `yaml`，仅允许 `inline-svg` / `yaml`；stdout 输出引导 AI 读取文件的提示词（包含绝对路径）。
 > - 非 agent 模式下 `--wb-format yaml` 时：`--wb-image-mode` 强制为 `online`。
-> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 yaml 清单。
+> - `--filter-title`：按标题文本精确匹配（忽略前后空格），收集该标题及其所有子级块，遇到同级或更高级标题时停止。同名标题取首个；未匹配时错误信息附全文标题 text 清单。
 > - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
 > - `--max-output-lines`：仅在未指定 `--filter-title` / `--filter-title-block-id` 时生效；纯 Markdown 阶段先检查一次，图片、画板、表格等解析完成后再检查一次。超过限制时直接报错，提示先用 `get-titles` 获取标题，再补充标题过滤参数重试。
 > - **命中深层标题时自动注入父级标题（仅 heading 块本身）**：两个过滤参数均会按文档顺序补齐包含路径上的顶层→该标题的所有祖先标题，以保留章节层级上下文；不会引入旁支兄弟或伪造跳级。
@@ -73,10 +73,10 @@ npx -y lark-docx2md@latest get-titles --agent <url>
 |-----------------------|------------------------------------------------------------------------------------------|--------|
 | `<url>`               | 飞书 wiki/docx URL                                                                       | —      |
 | `--max-level <n>`     | 仅输出 `level <= n` 的标题（1~9）                                                     | `9`    |
-| `--format <format>`   | 输出格式：`yaml`（扁平） \| `yaml-tree`（嵌套） \| `json` \| `tree`（json 嵌套） \| `text`（缩进的 markdown 标题） | `yaml` |
+| `--format <format>`   | 输出格式：`text`（`## [blockId] 标题`） \| `yaml`（嵌套）                              | `text` |
 | `--agent [mode]`      | 同 `dl`，降低日志级别                                                                 | —      |
 
-输出包含 `blockId` / `level` / `text`，可被 AI 直接消费用于选择目标章节（嵌套关系由 `yaml-tree` / `tree` 格式天然表达）。
+`text` 格式用 `#` 数量保留标题层级，并把 `blockId` 放在标题旁，便于 AI 直接选择目标章节。
 
 ## 功能
 

@@ -13,8 +13,7 @@ import {
   createTitleBlockIdFilter,
   type TitleFilterResult,
 } from './title-filter.js';
-import { serializeYaml } from './whiteboard/yaml/serialize.js';
-import { buildTitleTree } from './get-titles.js';
+import { serializeTitlesText } from './get-titles.js';
 import { parseWikiUrl } from './url.js';
 
 // 保留 “parseWikiUrl from converter” 公开 API（供外部代码 / 测试向后兼容）
@@ -157,15 +156,16 @@ export function assertOutputLineLimit (params: {
   );
 }
 
-function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilterResult, url: string, docToken: string): string {
+export function buildFilterErrorMessage (opts: ConvertOptions, result: TitleFilterResult, _url: string, _docToken: string): string {
   let target: string;
   if (opts.filterTitleBlockId) target = `block id "${opts.filterTitleBlockId}"`;
   else target = `"${opts.filterTitle}"`;
+
   let msg = `No heading matched ${target}. Please verify the heading text/id.`;
+
   if (result.availableHeadings.length > 0) {
-    const tree = buildTitleTree(result.availableHeadings);
-    const yaml = serializeYaml({ url, docToken, titles: tree });
-    msg += `\n\nFull title list of the document:\n\n${yaml}`;
+    const text = serializeTitlesText(result.availableHeadings);
+    msg += `\n\nFull title list of the document:\n\n${text}`;
   }
   return msg;
 }

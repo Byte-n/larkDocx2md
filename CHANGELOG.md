@@ -5,9 +5,9 @@
 ### Features
 
 - **`--filter-title-block-id` 精确过滤**：新增 CLI 选项与 `ConvertOptions.filterTitleBlockId`，按 heading 块 id 严格匹配目标章节，彻底规避同名标题歧义；与 `--filter-title` 互斥
-- **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `yaml` / `yaml-tree` / `json` / `tree` / `text` 五种输出格式与 `--max-level` 限级；不支持 sheets
+- **`get-titles` 子命令**：一键列出 docx/wiki 文档全部标题（1~9 级），支持 `text` / `yaml` 两种输出格式与 `--max-level` 限级；不支持 sheets
 - **`--filter-title` / `--filter-title-block-id` 注入父级标题**：命中深层标题时，自动把所有更高层级的祖先标题（仅 heading 块本身）按文档顺序一并输出，保留章节层级上下文；顶级命中不注入，跳级不伪造中间层，旁支兄弟自动排除
-- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `level` / `text`），`--filter-title` 未命中时错误信息改为与 `get-titles` 同形的 yaml 清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
+- **标题元信息结构化**：导出 `HeadingInfo`（`blockId` / `level` / `text`），`--filter-title` 未命中时错误信息改为紧凑 text 标题清单，AI/脚本可直接据此重选 blockId，形成错误恢复闭环
 
 ### Fixed
 

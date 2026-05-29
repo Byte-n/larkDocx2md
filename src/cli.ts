@@ -4,7 +4,13 @@ import * as path from 'node:path';
 import { Command } from 'commander';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import { convert, countMarkdownLines } from './converter.js';
-import { GET_TITLES_NON_DOCUMENT_HINT, buildTitleTree, getTitles } from './get-titles.js';
+import {
+  GET_TITLES_NON_DOCUMENT_HINT,
+  buildTitleTree,
+  getTitles,
+  serializeTitlesText,
+  type GetTitlesFormat,
+} from './get-titles.js';
 import { setLogLevel } from './logger.js';
 import { parseWikiUrl } from './url.js';
 import { serializeYaml } from './whiteboard/yaml/serialize.js';
@@ -164,14 +170,15 @@ program
 
 program
   .command('get-titles')
-  .description('Print all headings (level 1~9) of a wiki/docx document as a nested yaml tree. Useful before --filter-title-block-id.')
+  .description('Print all headings (level 1~9) of a wiki/docx document. Useful before --filter-title-block-id.')
   .option('--app-id <id>', 'Feishu app ID (or read from LARK_DOCX2MD_APP_ID)')
   .option('--app-secret <secret>', 'Feishu app secret (or read from LARK_DOCX2MD_APP_SECRET)')
   .option('-o, --output <dir>', 'Output directory used by --agent local (or LARK_DOCX2MD_OUTPUT)')
   .option('--max-level <n>', 'Only output headings whose level <= n (1~9)', '9')
+  .option('--format <format>', 'Output format: "text" or "yaml"', 'text')
   .option('--agent [mode]', 'Enable agent mode: ERROR log level, AI-oriented stdout. Modes: "stdout" (default, print titles to stdout) or "local" (save titles to disk and print a read-file prompt). Or LARK_DOCX2MD_AGENT=stdout|local')
   .argument('<url>', 'Feishu wiki/docx URL: https://*.feishu.cn/{wiki,docx,docs}/*')
-  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; maxLevel?: string; agent?: boolean | string }) => {
+  .action(async (url: string, opts: { appId?: string; appSecret?: string; output?: string; maxLevel?: string; format?: string; agent?: boolean | string }) => {
     opts.appId = opts.appId ?? process.env.LARK_DOCX2MD_APP_ID;
     opts.appSecret = opts.appSecret ?? process.env.LARK_DOCX2MD_APP_SECRET;
     opts.output = opts.output ?? process.env.LARK_DOCX2MD_OUTPUT ?? './larkDocx2mdOutput';
@@ -194,6 +201,10 @@ program
     if (!Number.isInteger(maxLevel) || maxLevel < 1 || maxLevel > 9) {
       program.error(`Invalid --max-level "${opts.maxLevel}", must be an integer in [1, 9]`);
     }
+    if (opts.format !== 'text' && opts.format !== 'yaml') {
+      program.error(`Invalid --format "${opts.format}", must be "text" or "yaml"`);
+    }
+    const format = opts.format as GetTitlesFormat;
 
     const appId = opts.appId!;
     const appSecret = opts.appSecret!;
@@ -208,13 +219,15 @@ program
       agent: opts.agent as AgentMode | false,
     });
     const filtered = result.titles.filter(t => t.level <= maxLevel);
-    const tree = buildTitleTree(filtered);
-    const content = serializeYaml({ url: result.url, docToken: result.docToken, titles: tree });
+    const content = format === 'yaml'
+      ? serializeYaml({ url: result.url, docToken: result.docToken, titles: buildTitleTree(filtered) })
+      : serializeTitlesText(filtered);
 
     if (agentLocal) {
       // 本地模式：落盘 + 输出引导 AI 读取文件的提示词（绝对路径）
       fs.mkdirSync(opts.output, { recursive: true });
-      const filePath = path.resolve(opts.output, `${result.docToken}.titles.yaml`);
+      const ext = format === 'yaml' ? 'yaml' : 'md';
+      const filePath = path.resolve(opts.output, `${result.docToken}.titles.${ext}`);
       fs.writeFileSync(filePath, content);
       const lineCount = countMarkdownLines(content);
       process.stdout.write(

@@ -151,7 +151,7 @@ export function assertOutputLineLimit (params: {
   if (lineCount <= params.maxOutputLines) return;
 
   throw new Error(
-    `Markdown output has ${lineCount} lines after ${params.stage}, exceeding --max-output-lines ${params.maxOutputLines}. ` +
+    `Markdown output has ${lineCount} lines after ${params.stage}, exceeding ${params.maxOutputLines}. ` +
     `Please narrow the document with a heading filter: run get-titles to find the heading, then retry dl with --filter-title-block-id.`,
   );
 }

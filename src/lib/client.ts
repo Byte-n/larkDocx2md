@@ -12,7 +12,7 @@ const RATE_LIMIT_RETRY_DELAY = 500;
 
 /**
  * 创建飞书 API 客户端。
- * 凭证优先级：传入参数（CLI）> macOS Keychain（auth.json + keychain）> 环境变量。
+ * 凭证优先级：传入参数（CLI）> 已存储凭证（macOS: Keychain; 其他: auth.json 明文）> 环境变量。
  */
 export async function createClient (cliAppId?: string, cliAppSecret?: string, loggerLevel: LoggerLevel = LoggerLevel.warn) {
   let appId = cliAppId;
@@ -30,9 +30,11 @@ export async function createClient (cliAppId?: string, cliAppSecret?: string, lo
   }
 
   if (!appId || !appSecret) {
-    const keychainHint = platform() === 'darwin' ? ', run "lark-docx2md init" to store in macOS Keychain,' : '';
+    const initHint = platform() === 'darwin'
+      ? ', run "lark-docx2md init" to store in macOS Keychain,'
+      : ', run "lark-docx2md init" to store in auth.json,';
     throw new Error(
-      `Missing credentials: pass --app-id/--app-secret${keychainHint} or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET`,
+      `Missing credentials: pass --app-id/--app-secret${initHint} or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET`,
     );
   }
 

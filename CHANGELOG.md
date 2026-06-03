@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0
+
+### Features
+
+- **`init` 命令**：新增交互式初始化命令，引导用户完成飞书应用 App ID 与 App Secret 的配置
+- **macOS Keychain 凭证存储**：macOS 平台将飞书应用凭证安全存储至系统钥匙串，免去重复输入或环境变量配置
+- **跨平台凭证回退**：非 macOS 系统凭证以明文存储至 `~/.lark-docx2md/auth.json`；macOS 读取时若 Keychain 无记录则自动回退至明文，兼顾安全与兼容
+
 ## 0.6.0
 
 ### Features

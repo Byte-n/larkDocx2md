@@ -1,4 +1,5 @@
 import * as p from '@clack/prompts';
+import { platform } from 'node:os';
 import { readAuthConfig, removeCredentials, saveCredentials } from '../lib/auth-store.js';
 import { beginRegistration, pollRegistration, probeCredentials } from '../lib/one-click-app.js';
 import type { CliErrorHandler } from './handlers.js';
@@ -16,6 +17,10 @@ export async function handleInitCommand (
   if (timeoutMs === null) fail('无效的 --timeout 值，必须为正整数（毫秒）');
 
   p.intro('lark-docx2md init');
+
+  if (platform() !== 'darwin') {
+    p.log.warn('当前系统不支持 macOS Keychain，凭证将以明文存储在 ~/.lark-docx2md/auth.json 中。');
+  }
 
   const existing = readAuthConfig();
 
@@ -114,7 +119,8 @@ export async function handleInitCommand (
     fail(`保存凭证失败: ${err.message}`);
   }
 
-  p.outro(`应用配置完成: ${result.appId}。现在可以直接使用 download/get-titles 命令，无需 --app-id/--app-secret。`);
+  const storageDesc = platform() === 'darwin' ? 'macOS Keychain' : '~/.lark-docx2md/auth.json';
+  p.outro(`应用配置完成: ${result.appId}（凭证已存储至 ${storageDesc}）。现在可以直接使用 download/get-titles 命令，无需 --app-id/--app-secret。`);
 }
 
 function parseTimeout (raw: string): number | null {

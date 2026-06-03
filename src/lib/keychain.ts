@@ -3,7 +3,7 @@ import { platform } from 'node:os';
 
 const SERVICE_NAME = 'lark-docx2md';
 
-function isMacOS (): boolean {
+export function isMacOS (): boolean {
   return platform() === 'darwin';
 }
 
@@ -24,7 +24,7 @@ function execSecurity (args: string[]): Promise<string> {
   });
 }
 
-export function assertMacOS (): void {
+function assertMacOS (): void {
   if (!isMacOS()) {
     throw new Error('Keychain storage is only supported on macOS.');
   }

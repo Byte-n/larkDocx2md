@@ -2,14 +2,21 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import { homedir } from 'node:os';
-import { keychainGet, keychainSet, keychainDelete, assertMacOS } from './keychain.js';
+import { keychainGet, keychainSet, keychainDelete, isMacOS } from './keychain.js';
+
+/** Warning message when auth.json contains a Keychain reference but platform is non-macOS. */
+const CROSS_PLATFORM_WARN =
+  'auth.json 中包含 Keychain 凭证引用，但当前系统不支持 macOS Keychain。请运行 "lark-docx2md init" 重新配置。';
 
 const AUTH_DIR = path.join(homedir(), '.lark-docx2md');
 const AUTH_FILE = path.join(AUTH_DIR, 'auth.json');
 
 export interface AuthConfig {
   appId: string;
-  key: string; // md5 of appSecret, used as keychain account
+  /** macOS only: keychain account name for retrieving appSecret */
+  key?: string;
+  /** non-macOS only: appSecret stored in plaintext as file fallback */
+  appSecret?: string;
 }
 
 const KEYCHAIN_ACCOUNT_PREFIX = 'app-secret-';
@@ -23,8 +30,12 @@ export function readAuthConfig (): AuthConfig | null {
   try {
     const raw = fs.readFileSync(AUTH_FILE, 'utf-8');
     const data = JSON.parse(raw);
-    if (data && typeof data.appId === 'string' && typeof data.key === 'string') {
-      return { appId: data.appId, key: data.key };
+    if (data && typeof data.appId === 'string') {
+      return {
+        appId: data.appId,
+        key: typeof data.key === 'string' ? data.key : undefined,
+        appSecret: typeof data.appSecret === 'string' ? data.appSecret : undefined,
+      };
     }
     return null;
   } catch {
@@ -35,7 +46,11 @@ export function readAuthConfig (): AuthConfig | null {
 /** Write auth.json, creating directory if needed. */
 export function writeAuthConfig (config: AuthConfig): void {
   fs.mkdirSync(AUTH_DIR, { recursive: true });
-  fs.writeFileSync(AUTH_FILE, JSON.stringify(config, null, 2) + '\n', 'utf-8');
+  // Only write fields that are defined (omit undefined)
+  const toWrite: Record<string, string> = { appId: config.appId };
+  if (config.key !== undefined) toWrite.key = config.key;
+  if (config.appSecret !== undefined) toWrite.appSecret = config.appSecret;
+  fs.writeFileSync(AUTH_FILE, JSON.stringify(toWrite, null, 2) + '\n', 'utf-8');
 }
 
 /** Remove auth.json file. */
@@ -48,41 +63,62 @@ export function removeAuthConfig (): void {
 }
 
 /**
- * Save credentials: appId goes to auth.json, appSecret goes to keychain.
- * The keychain account name is md5(appSecret).
+ * Save credentials.
+ * - macOS: appId → auth.json, appSecret → Keychain
+ * - non-macOS: appId + appSecret → auth.json (file fallback)
  */
 export async function saveCredentials (appId: string, appSecret: string): Promise<void> {
-  assertMacOS();
-  const key = computeSecretKey(appSecret);
-  await keychainSet(key, appSecret);
-  writeAuthConfig({ appId, key });
+  if (isMacOS()) {
+    const key = computeSecretKey(appSecret);
+    await keychainSet(key, appSecret);
+    writeAuthConfig({ appId, key });
+  } else {
+    writeAuthConfig({ appId, appSecret });
+  }
 }
 
 /**
- * Read credentials: appId from auth.json, appSecret from keychain using stored key.
+ * Read credentials.
+ * - macOS: prefer Keychain (key field), fall back to plaintext (appSecret field).
+ * - non-macOS: prefer plaintext (appSecret field); warn if only key field exists.
  * Returns undefined values if not configured.
  */
 export async function getStoredCredentials (): Promise<{ appId?: string; appSecret?: string }> {
   const config = readAuthConfig();
   if (!config) return {};
 
-  try {
-    const appSecret = await keychainGet(config.key);
-    return {
-      appId: config.appId,
-      appSecret: appSecret || undefined,
-    };
-  } catch {
+  if (isMacOS()) {
+    // macOS: Keychain first, then plaintext fallback
+    if (config.key !== undefined) {
+      try {
+        const appSecret = await keychainGet(config.key);
+        if (appSecret) return { appId: config.appId, appSecret };
+      } catch { /* fall through */ }
+    }
+    if (config.appSecret !== undefined) {
+      return { appId: config.appId, appSecret: config.appSecret };
+    }
     return { appId: config.appId };
   }
+
+  // non-macOS: plaintext first
+  if (config.appSecret !== undefined) {
+    return { appId: config.appId, appSecret: config.appSecret };
+  }
+  if (config.key !== undefined) {
+    console.warn(CROSS_PLATFORM_WARN);
+  }
+  return { appId: config.appId };
 }
 
 /**
- * Remove stored credentials: delete keychain entry and auth.json.
+ * Remove stored credentials.
+ * - macOS: delete Keychain entry + auth.json
+ * - non-macOS: delete auth.json
  */
 export async function removeCredentials (): Promise<void> {
   const config = readAuthConfig();
-  if (config) {
+  if (config?.key) {
     try {
       await keychainDelete(config.key);
     } catch {

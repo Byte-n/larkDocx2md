@@ -28,7 +28,7 @@ export async function convert (opts: ConvertOptions): Promise<ConvertResult> {
   logger.info('Captured document token:', rawToken, sheetId ? `sheetId: ${sheetId}` : '');
 
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
-  const client = createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
+  const client = await createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
 
   // 1. 解析文档 token 与类型
   let docToken = rawToken;

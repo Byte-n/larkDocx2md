@@ -1,6 +1,6 @@
 {
   "name": "lark-docx2md",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Convert Lark/Feishu documents to Markdown",
   "type": "module",
   "main": "./dist/converter.js",
@@ -42,6 +42,7 @@
   },
   "packageManager": "pnpm@10.30.1",
   "dependencies": {
+    "@clack/prompts": "^1.5.0",
     "@larksuiteoapi/node-sdk": "^1.60.0",
     "commander": "^14.0.3"
   },

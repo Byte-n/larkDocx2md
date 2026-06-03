@@ -34,6 +34,16 @@ export LARK_DOCX2MD_APP_SECRET=<APP_SECRET>
 npx -y lark-docx2md@latest download --url <url>
 ```
 
+或使用 `init` 命令一键配置并持久化凭证（macOS 存入系统 Keychain，其他系统存入 `~/.lark-docx2md/auth.json`）：
+
+```bash
+npx -y lark-docx2md@latest init
+```
+
+完成后即可直接使用 `download` / `get-titles`，无需每次传入 `--app-id` / `--app-secret` 或设置环境变量。
+
+> **凭证优先级**：命令行参数 > 已存储凭证（macOS: Keychain；其他: auth.json）> 环境变量
+
 ## 参数
 
 | 参数                       | 说明                                        | 环境变量                         | 默认值                   |
@@ -60,6 +70,21 @@ npx -y lark-docx2md@latest download --url <url>
 > - `--filter-title-block-id`：按 heading 块 id 严格相等匹配，适用于同名标题或脚本化场景；通常先用 `get-titles` 查出目标 `blockId` 再传入。与 `--filter-title` 互斥。
 > - `--max-output-lines`：仅在未指定 `--filter-title` / `--filter-title-block-id` 时生效；纯 Markdown 阶段先检查一次，图片、画板、表格等解析完成后再检查一次。超过限制时直接报错，提示先用 `get-titles` 获取标题，再补充标题过滤参数重试。
 > - **命中深层标题时自动注入父级标题（仅 heading 块本身）**：两个过滤参数均会按文档顺序补齐包含路径上的顶层→该标题的所有祖先标题，以保留章节层级上下文；不会引入旁支兄弟或伪造跳级。
+
+## 子命令：`init`
+
+交互式配置飞书应用凭证。通过飞书一键应用流程注册并验证凭证，macOS 保存至系统 Keychain，其他系统保存至 `~/.lark-docx2md/auth.json`。
+
+```bash
+npx -y lark-docx2md@latest init
+```
+
+| 参数 | 说明 | 默认值 |
+|------|------|--------|
+| `--no-probe` | 跳过凭证验证步骤 | `false` |
+| `--timeout <ms>` | 请求超时（毫秒） | `30000` |
+
+已配置时再次运行可替换或移除现有凭证。
 
 ## 子命令：`get-titles`
 

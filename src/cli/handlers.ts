@@ -12,7 +12,6 @@ import { setLogLevel } from '../lib/logger.js';
 import { parseWikiUrl } from '../lib/url.js';
 import { serializeYaml } from '../whiteboard/yaml/serialize.js';
 import {
-  missingCredentialsMessage,
   resolveCommandUrl,
   resolveDownloadOptions,
   resolveGetTitlesOptions,
@@ -37,11 +36,10 @@ export async function handleDownloadCommand (
   const agentEnabled = agentLocal || agentStdout;
 
   if (agentEnabled) setLogLevel(LoggerLevel.error);
-  if (!opts.appId || !opts.appSecret) fail(missingCredentialsMessage(agentEnabled));
 
   const result = await convert({
-    appId: opts.appId,
-    appSecret: opts.appSecret,
+    appId: rawOptions.appId,
+    appSecret: rawOptions.appSecret,
     url,
     output: opts.output,
     imageMode: opts.imageMode,
@@ -85,11 +83,9 @@ export async function handleGetTitlesCommand (
     throw new Error(GET_TITLES_NON_DOCUMENT_HINT);
   }
 
-  if (!opts.appId || !opts.appSecret) fail(missingCredentialsMessage(agentEnabled));
-
   const result = await getTitles({
-    appId: opts.appId,
-    appSecret: opts.appSecret,
+    appId: rawOptions.appId,
+    appSecret: rawOptions.appSecret,
     url,
     agent: opts.agent,
   });

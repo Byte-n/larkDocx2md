@@ -11,8 +11,8 @@ export const GET_TITLES_NON_DOCUMENT_HINT = 'The input link is not a document. T
 // ─── Options & Result ───────────────────────────────────────────────────────
 
 export interface GetTitlesOptions {
-  appId: string;
-  appSecret: string;
+  appId?: string;
+  appSecret?: string;
   url: string;
   /** 仅影响 SDK 日志级别（与 dl 保持一致） */
   agent?: AgentMode | false;
@@ -34,7 +34,7 @@ export async function getTitles (opts: GetTitlesOptions): Promise<GetTitlesResul
   }
 
   const sdkLoggerLevel = opts.agent ? LoggerLevel.error : LoggerLevel.warn;
-  const client = createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
+  const client = await createClient(opts.appId, opts.appSecret, sdkLoggerLevel);
 
   let docToken = rawToken;
   if (docType === 'wiki') {

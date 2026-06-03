@@ -36,8 +36,6 @@ describe('cli options', () => {
 
     expect(resolved.error).toBeUndefined();
     expect(resolved.value).toMatchObject({
-      appId: 'app-id',
-      appSecret: 'app-secret',
       output: './out',
       agent: 'stdout',
       imageMode: 'online',

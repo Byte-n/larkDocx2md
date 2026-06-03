@@ -27,8 +27,6 @@ export interface GetTitlesRawOptions {
 }
 
 export interface ResolvedDownloadOptions {
-  appId?: string;
-  appSecret?: string;
   output: string;
   agent: AgentMode | false;
   imageMode: ImageMode;
@@ -41,8 +39,6 @@ export interface ResolvedDownloadOptions {
 }
 
 export interface ResolvedGetTitlesOptions {
-  appId?: string;
-  appSecret?: string;
   output: string;
   agent: AgentMode | false;
   maxLevel: number;
@@ -90,13 +86,6 @@ export function resolveAgentMode (
   if (raw === true) return { value: 'stdout' };
   if (raw === 'stdout' || raw === 'local') return { value: raw };
   return { value: false, error: `Invalid --agent value "${raw}", must be "stdout" or "local"` };
-}
-
-export function missingCredentialsMessage (agentEnabled: boolean): string {
-  if (agentEnabled) {
-    return 'Missing credentials: pass --app-id/--app-secret or configure credentials in the environment.';
-  }
-  return 'Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET';
 }
 
 export function resolveDownloadOptions (
@@ -162,8 +151,6 @@ export function resolveDownloadOptions (
 
   return {
     value: {
-      appId: raw.appId ?? env.LARK_DOCX2MD_APP_ID,
-      appSecret: raw.appSecret ?? env.LARK_DOCX2MD_APP_SECRET,
       output: raw.output ?? env.LARK_DOCX2MD_OUTPUT ?? DEFAULT_OUTPUT,
       agent,
       imageMode,
@@ -196,8 +183,6 @@ export function resolveGetTitlesOptions (
 
   return {
     value: {
-      appId: raw.appId ?? env.LARK_DOCX2MD_APP_ID,
-      appSecret: raw.appSecret ?? env.LARK_DOCX2MD_APP_SECRET,
       output: raw.output ?? env.LARK_DOCX2MD_OUTPUT ?? DEFAULT_OUTPUT,
       agent: agentResolved.value,
       maxLevel,

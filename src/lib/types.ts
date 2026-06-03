@@ -40,8 +40,8 @@ export type SvgBackground = 'none' | 'dot' | (string & {});
 export type AgentMode = 'stdout' | 'local';
 
 export interface ConvertOptions {
-  appId: string;
-  appSecret: string;
+  appId?: string;
+  appSecret?: string;
   url: string;
   output: string;
   imageMode: ImageMode;

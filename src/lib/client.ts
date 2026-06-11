@@ -2,8 +2,6 @@ import * as lark from '@larksuiteoapi/node-sdk';
 import { LoggerLevel } from '@larksuiteoapi/node-sdk';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { platform } from 'node:os';
-import { getStoredCredentials } from './auth-store.js';
 import type { DocInfo, DocxBlock, WhiteboardNode } from './types.js';
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -12,29 +10,15 @@ const RATE_LIMIT_RETRY_DELAY = 500;
 
 /**
  * 创建飞书 API 客户端。
- * 凭证优先级：传入参数（CLI）> 已存储凭证（macOS: Keychain; 其他: auth.json 明文）> 环境变量。
+ * 凭证优先级：传入参数（CLI）> 环境变量。
  */
 export async function createClient (cliAppId?: string, cliAppSecret?: string, loggerLevel: LoggerLevel = LoggerLevel.warn) {
-  let appId = cliAppId;
-  let appSecret = cliAppSecret;
+  const appId = cliAppId || process.env.LARK_DOCX2MD_APP_ID;
+  const appSecret = cliAppSecret || process.env.LARK_DOCX2MD_APP_SECRET;
 
   if (!appId || !appSecret) {
-    const stored = await getStoredCredentials();
-    appId = appId || stored.appId;
-    appSecret = appSecret || stored.appSecret;
-  }
-
-  if (!appId || !appSecret) {
-    appId = appId || process.env.LARK_DOCX2MD_APP_ID;
-    appSecret = appSecret || process.env.LARK_DOCX2MD_APP_SECRET;
-  }
-
-  if (!appId || !appSecret) {
-    const initHint = platform() === 'darwin'
-      ? ', run "lark-docx2md init" to store in macOS Keychain,'
-      : ', run "lark-docx2md init" to store in auth.json,';
     throw new Error(
-      `Missing credentials: pass --app-id/--app-secret${initHint} or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET`,
+      'Missing credentials: pass --app-id/--app-secret or set LARK_DOCX2MD_APP_ID/LARK_DOCX2MD_APP_SECRET',
     );
   }
 

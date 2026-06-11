@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.0
+
+### Removed
+
+- **`init` 命令**：移除 `larkDocx2md init` 凭证初始化入口；`download` / `get-titles` 不再读取已存储凭证（macOS Keychain 或 `~/.lark-docx2md/auth.json`），仅支持命令行参数与环境变量
+
 ## 0.7.0
 
 ### Features

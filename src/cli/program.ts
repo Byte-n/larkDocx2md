@@ -1,6 +1,5 @@
 import { Command } from 'commander';
 import { handleDownloadCommand, handleGetTitlesCommand } from './handlers.js';
-import { handleInitCommand, type InitRawOptions } from './init-handler.js';
 import type { DownloadRawOptions, GetTitlesRawOptions } from './options.js';
 
 export function createProgram (): Command {
@@ -41,15 +40,6 @@ export function createProgram (): Command {
     .argument('[url]', 'Deprecated: Feishu wiki/docx URL. Use --url <url> instead.')
     .action((positionalUrl: string | undefined, opts: GetTitlesRawOptions) => (
       handleGetTitlesCommand(positionalUrl, opts, message => program.error(message))
-    ));
-
-  program
-    .command('init')
-    .description('管理应用凭证：新增、替换或移除已存储的飞书应用凭证')
-    .option('--no-probe', '注册后跳过 tenant_access_token 验证')
-    .option('--timeout <ms>', '每次请求超时时间（毫秒，默认 30000）')
-    .action((opts: InitRawOptions) => (
-      handleInitCommand(opts, message => program.error(message))
     ));
 
   return program;

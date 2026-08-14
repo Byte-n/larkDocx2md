@@ -85,14 +85,15 @@ jobs:
         with:
           version: 10.30.1
 
+      # 注意：npm@latest（12.x）要求 Node >= 22.22.2，Node 20 无法安装，故升级到 Node 24
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
-      # Trusted Publishing 需要 npm CLI >= 11.5.1（Node 20 自带的 npm 版本过低）
+      # Trusted Publishing 需要 npm CLI >= 11.5.1
       - name: Upgrade npm CLI for Trusted Publishing
         run: npm install -g npm@latest
 

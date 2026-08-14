@@ -4,6 +4,7 @@ import type { MdBlockNode } from '../types.js';
 
 export const orderedParser: BlockParser = {
   blockType: 13,
+  consumesChildren: true,
   parse (block: DocxBlock, ctx: ParserContext): MdBlockNode {
     const parent = block.parent_id ? ctx.blockMap.get(block.parent_id) : undefined;
     let order = 1;

@@ -347,53 +347,56 @@ function replaceInAst (
     return;
   }
 
-  if (!hasBlockChildren(node)) return;
-
-  const children = node.children as MdBlockNode[];
-  for (let i = 0; i < children.length; i++) {
-    const child = children[i]!;
-    if (child.type === 'whiteboard') {
-      const replacement = whiteboardMap.get(child.token);
-      if (replacement) {
-        children[i] = replacement;
-        continue;
+  for (const arr of blockChildArrays(node)) {
+    for (let i = 0; i < arr.length; i++) {
+      const child = arr[i]!;
+      if (child.type === 'whiteboard') {
+        const replacement = whiteboardMap.get(child.token);
+        if (replacement) {
+          arr[i] = replacement;
+          continue;
+        }
       }
-    }
-    if (child.type === 'sheet') {
-      const replacement = sheetMap.get(child.token);
-      if (replacement) {
-        children[i] = replacement;
-        continue;
+      if (child.type === 'sheet') {
+        const replacement = sheetMap.get(child.token);
+        if (replacement) {
+          arr[i] = replacement;
+          continue;
+        }
       }
-    }
-    if (child.type === 'image') {
-      const newSrc = imageMap.get(child.src);
-      if (newSrc) {
-        (child as MdBlockNode & { src: string }).src = newSrc;
+      if (child.type === 'image') {
+        const newSrc = imageMap.get(child.src);
+        if (newSrc) {
+          (child as MdBlockNode & { src: string }).src = newSrc;
+        }
       }
+      replaceInAst(child, imageMap, whiteboardMap, sheetMap);
     }
-    replaceInAst(child, imageMap, whiteboardMap, sheetMap);
   }
 }
 
 function traverseBlockAst (node: MdBlockNode, visitor: (node: MdBlockNode) => void): void {
   visitor(node);
-  if (!hasBlockChildren(node)) return;
-  for (const child of (node.children as MdBlockNode[])) {
-    traverseBlockAst(child, visitor);
+  for (const arr of blockChildArrays(node)) {
+    for (const child of arr) {
+      traverseBlockAst(child, visitor);
+    }
   }
 }
 
-function hasBlockChildren (node: MdBlockNode): node is Extract<
-  MdBlockNode,
-  { type: 'page' | 'bullet' | 'ordered' | 'callout' | 'quote' | 'grid' }
-> {
-  return (
-    node.type === 'page' ||
-    node.type === 'bullet' ||
-    node.type === 'ordered' ||
-    node.type === 'callout' ||
-    node.type === 'quote' ||
-    node.type === 'grid'
-  );
+/**
+ * 返回节点持有的块级子节点数组（可变引用），供遍历/替换使用。
+ * 容器型（page/bullet/ordered/callout/quote/grid）子块在 children；
+ * 任意节点都可能携带嵌套 blocks（飞书大纲/折叠等场景下叶子块的内容）。
+ */
+function blockChildArrays (node: MdBlockNode): MdBlockNode[][] {
+  const arrs: MdBlockNode[][] = [];
+  if (
+    node.type === 'page' || node.type === 'bullet' || node.type === 'ordered' ||
+    node.type === 'callout' || node.type === 'quote' || node.type === 'grid'
+  ) {
+    arrs.push(node.children as MdBlockNode[]);
+  }
+  if (node.blocks) arrs.push(node.blocks);
+  return arrs;
 }

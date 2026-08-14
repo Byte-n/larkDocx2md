@@ -4,6 +4,7 @@ import type { MdBlockNode } from '../types.js';
 
 export const gridParser: BlockParser = {
   blockType: 24,
+  consumesChildren: true,
   parse (block: DocxBlock, ctx: ParserContext): MdBlockNode {
     const children: MdBlockNode[] = [];
     for (const colId of block.children ?? []) {

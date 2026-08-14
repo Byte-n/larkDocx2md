@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.1
+
+### Fixed
+
+- **嵌套子块保留与未支持块回退**：飞书大纲/折叠场景下，任意叶子块（todo/heading/quote/equation/code/image 等）都可能携带 children，原实现只让容器型 parser 消费 children，导致这些子块被静默丢弃、导出文档章节内容缺失。本次让叶子块未自行消费的 children 统一挂到 `node.blocks`，序列化时在节点自身内容之后渲染；容器型 parser 标记 `consumesChildren` 避免重复挂载。未支持块类型不再整块丢弃，而是回退为 paragraph（尽量提取文本）并保留其嵌套子树，既无文本也无子块时才丢弃
+
 ## 0.8.0
 
 ### Removed

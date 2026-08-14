@@ -29,6 +29,19 @@ describe('MdSerializer', () => {
       const node: MdBlockNode = { type: 'heading', level: 2, children: [bold('Important')] };
       expect(s.serialize(node)).toBe('## **Important**\n\n');
     });
+
+    it('renders nested block children after the heading line', () => {
+      const node: MdBlockNode = {
+        type: 'heading',
+        level: 2,
+        children: [text('Section')],
+        blocks: [
+          { type: 'paragraph', children: [text('Body')] },
+          { type: 'heading', level: 3, children: [text('Sub')] },
+        ],
+      };
+      expect(s.serialize(node)).toBe('## Section\n\nBody\n\n### Sub\n\n');
+    });
   });
 
   describe('paragraph', () => {
@@ -84,6 +97,19 @@ describe('MdSerializer', () => {
     it('serializes checked', () => {
       const node: MdBlockNode = { type: 'todo', checked: true, text: [text('done')] };
       expect(s.serialize(node)).toBe('- [x] done\n');
+    });
+
+    it('renders nested block children after the todo line', () => {
+      const node: MdBlockNode = {
+        type: 'todo',
+        checked: false,
+        text: [text('Task')],
+        blocks: [
+          { type: 'paragraph', children: [text('Detail')] },
+          { type: 'todo', checked: true, text: [text('Sub')] },
+        ],
+      };
+      expect(s.serialize(node)).toBe('- [ ] Task\nDetail\n\n- [x] Sub\n');
     });
   });
 

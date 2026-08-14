@@ -62,6 +62,48 @@ describe('Parser - end-to-end', () => {
     }
   });
 
+  it('parses a heading carrying nested children (Feishu outline/folded heading)', () => {
+    const blocks: DocxBlock[] = [
+      b({ block_id: 'root', block_type: 1, children: ['h'] }),
+      b({ block_id: 'h', block_type: 5, parent_id: 'root', heading3: { elements: [textRun('消息类型 msgType')] }, children: ['p1', 'h2'] }),
+      b({ block_id: 'p1', block_type: 2, parent_id: 'h', text: { elements: [textRun('intro text')] } }),
+      b({ block_id: 'h2', block_type: 6, parent_id: 'h', heading4: { elements: [textRun('子标题')] } }),
+    ];
+    const ast = buildParser().parse(doc, blocks);
+    if (ast.type !== 'page') throw new Error();
+    const h = ast.children[0]!;
+    expect(h).toMatchObject({ type: 'heading', level: 3 });
+    if (h.type !== 'heading') throw new Error();
+    expect(h.blocks).toHaveLength(2);
+    expect(h.blocks![0]).toMatchObject({ type: 'paragraph' });
+    expect(h.blocks![1]).toMatchObject({ type: 'heading', level: 4 });
+
+    const ser = new MdSerializer();
+    registerBuiltinSerializers(ser);
+    expect(ser.serialize(ast)).toBe('### 消息类型 msgType\n\nintro text\n\n#### 子标题\n\n');
+  });
+
+  it('parses a leaf block (todo) carrying nested children (generalized outline)', () => {
+    const blocks: DocxBlock[] = [
+      b({ block_id: 'root', block_type: 1, children: ['t'] }),
+      b({ block_id: 't', block_type: 17, parent_id: 'root', todo: { style: { done: false }, elements: [textRun('消息类型 msgType')] }, children: ['p1', 't2'] }),
+      b({ block_id: 'p1', block_type: 2, parent_id: 't', text: { elements: [textRun('intro')] } }),
+      b({ block_id: 't2', block_type: 17, parent_id: 't', todo: { style: { done: true }, elements: [textRun('sub todo')] } }),
+    ];
+    const ast = buildParser().parse(doc, blocks);
+    if (ast.type !== 'page') throw new Error();
+    const t = ast.children[0]!;
+    expect(t).toMatchObject({ type: 'todo', checked: false });
+    if (t.type !== 'todo') throw new Error();
+    expect(t.blocks).toHaveLength(2);
+    expect(t.blocks![0]).toMatchObject({ type: 'paragraph' });
+    expect(t.blocks![1]).toMatchObject({ type: 'todo', checked: true });
+
+    const ser = new MdSerializer();
+    registerBuiltinSerializers(ser);
+    expect(ser.serialize(ast)).toBe('- [ ] 消息类型 msgType\nintro\n\n- [x] sub todo\n');
+  });
+
   it('parses inline styles (bold/italic/underline/strikethrough/inlineCode/link)', () => {
     const blocks: DocxBlock[] = [
       b({ block_id: 'root', block_type: 1, children: ['p'] }),
@@ -436,6 +478,27 @@ describe('Parser - end-to-end', () => {
     const ast = buildParser().parse(doc, blocks);
     if (ast.type !== 'page') throw new Error();
     expect(ast.children).toHaveLength(0);
+  });
+
+  it('falls back an unknown block_type with text/children to a paragraph (preserves subtree)', () => {
+    const blocks: DocxBlock[] = [
+      b({ block_id: 'root', block_type: 1, children: ['u'] }),
+      b({ block_id: 'u', block_type: 999, parent_id: 'root', text: { elements: [textRun('未支持块正文')] }, children: ['p1'] } as any),
+      b({ block_id: 'p1', block_type: 2, parent_id: 'u', text: { elements: [textRun('嵌套子块')] } }),
+    ];
+    const ast = buildParser().parse(doc, blocks);
+    if (ast.type !== 'page') throw new Error();
+    expect(ast.children).toHaveLength(1);
+    const u = ast.children[0]!;
+    expect(u).toMatchObject({ type: 'paragraph' });
+    if (u.type !== 'paragraph') throw new Error();
+    expect(u.children[0]).toMatchObject({ type: 'text', content: '未支持块正文' });
+    expect(u.blocks).toHaveLength(1);
+    expect(u.blocks![0]).toMatchObject({ type: 'paragraph' });
+
+    const ser = new MdSerializer();
+    registerBuiltinSerializers(ser);
+    expect(ser.serialize(ast)).toBe('未支持块正文\n\n嵌套子块\n\n');
   });
 
   // ─── Parser + Serializer integration ──────────────────────────────────────

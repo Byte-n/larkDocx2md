@@ -4,6 +4,7 @@ import type { MdBlockNode, MdInlineNode, MdTableRow } from '../types.js';
 
 export const tableParser: BlockParser = {
   blockType: 31,
+  consumesChildren: true,
   parse (block: DocxBlock, ctx: ParserContext): MdBlockNode {
     const t = block.table!;
     const cols = t.property.column_size;

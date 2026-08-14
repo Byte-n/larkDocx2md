@@ -33,10 +33,13 @@ export class MdSerializer {
       sourceType: options.sourceType ?? 'docx',
       serialize: (node: MdBlockNode, indent = 0): string => {
         const serializer = this.registry.get(node.type);
-        if (serializer) {
-          return serializer.serialize(node, ctx);
+        if (!serializer) return '';
+        let s = serializer.serialize(node, ctx);
+        // 通用：渲染节点携带的嵌套子块（飞书大纲/折叠等场景下叶子块的内容），位于节点自身内容之后
+        if (node.blocks?.length) {
+          for (const child of node.blocks) s += ctx.serialize(child, indent);
         }
-        return '';
+        return s;
       },
       serializeInline: (nodes: MdInlineNode[]): string => {
         return nodes.map(n => serializeInlineNode(n)).join('');

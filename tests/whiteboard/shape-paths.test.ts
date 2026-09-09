@@ -83,6 +83,18 @@ describe('shape-paths: composite shapes with multiple elements', () => {
     expect(out).toContain('stroke="#444"');
   });
 
+  it('cylinder body rect does not redefine stroke attribute', () => {
+    const fn = getShapePath('cylinder')!;
+    const sa = 'fill="#dff5e5" stroke="#000000" stroke-width="2"';
+    const out = fn(100, 80, sa, blankNode({ style: { border_color: '#000000' } as any }));
+    const body = out.split('\n').find((line) => line.includes('<rect'))!;
+    // 每个属性名只能出现一次，避免浏览器报 Attribute stroke redefined
+    expect(body).toMatch(/stroke="none"/);
+    expect(body.match(/\bstroke="/g)?.length).toBe(1);
+    expect(body).not.toMatch(/stroke-width=/);
+    expect(body).toContain('fill="#dff5e5"');
+  });
+
   it('cylinder uses default stroke when border_color missing', () => {
     const fn = getShapePath('cylinder')!;
     const out = fn(100, 80, SA, blankNode());

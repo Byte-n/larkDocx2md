@@ -1,5 +1,5 @@
 import type { WNode } from './types.js';
-import { BORDER_WIDTH_MAP, r } from './utils.js';
+import { BORDER_WIDTH_MAP, r, withoutStrokeAttrs } from './utils.js';
 
 // ─── Shape Path Registry ────────────────────────────────────────────────────
 
@@ -87,9 +87,12 @@ registerShapePath(['trapezoid', 'flow_chart_trapezoid'], (w, h, sa) => {
 
 registerShapePath(['cylinder', 'flow_chart_cylinder', 'data_base'], (w, h, sa, n) => {
   const ry = h * 0.1;
+  // 圆柱体侧面用 line 描边，中间矩形不能再继承 sa 里的 stroke，
+  // 否则会出现 stroke="..." stroke="none" 的非法重复属性。
+  const bodySa = withoutStrokeAttrs(sa);
   return [
     `<ellipse cx="${w / 2}" cy="${ry}" rx="${w / 2}" ry="${ry}" ${sa}/>`,
-    `<rect x="0" y="${ry}" width="${w}" height="${h - 2 * ry}" ${sa} stroke="none"/>`,
+    `<rect x="0" y="${ry}" width="${w}" height="${h - 2 * ry}" ${bodySa} stroke="none"/>`,
     `<line x1="0" y1="${ry}" x2="0" y2="${h - ry}" stroke="${n.style?.border_color ?? '#333'}" stroke-width="${BORDER_WIDTH_MAP[n.style?.border_width ?? 'narrow'] ?? 1}"/>`,
     `<line x1="${w}" y1="${ry}" x2="${w}" y2="${h - ry}" stroke="${n.style?.border_color ?? '#333'}" stroke-width="${BORDER_WIDTH_MAP[n.style?.border_width ?? 'narrow'] ?? 1}"/>`,
     `<ellipse cx="${w / 2}" cy="${h - ry}" rx="${w / 2}" ry="${ry}" ${sa}/>`,

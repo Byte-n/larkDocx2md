@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  r, esc, styleAttrs, withoutStrokeAttrs, transformAttr, walkNodes, filterNodes, gWrap, nodeDataAttrs,
+  r, esc, styleAttrs, fillOnlyAttrs, transformAttr, walkNodes, filterNodes, gWrap, nodeDataAttrs,
   BORDER_WIDTH_MAP, DASH_ARRAY_MAP,
 } from '../../src/whiteboard/utils.js';
 
@@ -78,18 +78,20 @@ describe('styleAttrs', () => {
   });
 });
 
-describe('withoutStrokeAttrs', () => {
-  it('strips stroke and related attributes while keeping fill', () => {
-    expect(withoutStrokeAttrs('fill="#eee" stroke="#333"')).toBe('fill="#eee"');
+describe('fillOnlyAttrs', () => {
+  it('emits only fill attrs regardless of border style', () => {
+    expect(fillOnlyAttrs({ fill_color: '#eee', border_color: '#333' } as any)).toBe('fill="#eee"');
     expect(
-      withoutStrokeAttrs('fill="#dff5e5" stroke="#000" stroke-width="2" stroke-dasharray="8,4"'),
-    ).toBe('fill="#dff5e5"');
+      fillOnlyAttrs({
+        fill_color: '#dff5e5', fill_opacity: 50,
+        border_color: '#000', border_width: 'bold', border_style: 'dash',
+      } as any),
+    ).toBe('fill="#dff5e5" fill-opacity="0.5"');
   });
 
-  it('keeps fill-opacity', () => {
-    expect(withoutStrokeAttrs('fill="#f00" fill-opacity="0.5" stroke="#333"')).toBe(
-      'fill="#f00" fill-opacity="0.5"',
-    );
+  it('falls back to fill="none" when style or fill_color missing', () => {
+    expect(fillOnlyAttrs()).toBe('fill="none"');
+    expect(fillOnlyAttrs({ border_style: 'none' } as any)).toBe('fill="none"');
   });
 });
 

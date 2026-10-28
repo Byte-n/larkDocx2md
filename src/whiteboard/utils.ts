@@ -179,12 +179,16 @@ export function styleAttrs (s?: WStyle): string {
   return parts.join(' ');
 }
 
-/** 从 styleAttrs 结果中剥离 stroke 相关属性，便于再单独指定 stroke */
-export function withoutStrokeAttrs (sa: string): string {
-  return sa
-    .replace(/\bstroke(?:-width|-opacity|-dasharray)?="[^"]*"/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
+/** 仅生成 fill 系属性（fill / fill-opacity），用于纯填充、描边单独指定的元素（如圆柱侧壁） */
+export function fillOnlyAttrs (s?: WStyle): string {
+  if (!s) return 'fill="none"';
+  const parts: string[] = [];
+  // fill
+  if (s.fill_color) parts.push(`fill="${s.fill_color}"`);
+  else parts.push('fill="none"');
+  // fill-opacity: 省略默认值 1
+  if (s.fill_opacity != null && s.fill_opacity !== 100) parts.push(`fill-opacity="${r(s.fill_opacity / 100)}"`);
+  return parts.join(' ');
 }
 
 export function transformAttr (n: WNode): string {

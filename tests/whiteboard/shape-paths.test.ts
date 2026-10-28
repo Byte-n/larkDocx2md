@@ -3,6 +3,7 @@ import { getShapePath, registerShapePath, defaultShapePath } from '../../src/whi
 // 触发形状注册的 side-effect
 import '../../src/whiteboard/shape-paths.js';
 import type { WNode } from '../../src/whiteboard/types.js';
+import { styleAttrs } from '../../src/whiteboard/utils.js';
 
 const SA = 'fill="#eee" stroke="#333"';
 const W = 100;
@@ -85,8 +86,9 @@ describe('shape-paths: composite shapes with multiple elements', () => {
 
   it('cylinder body rect does not redefine stroke attribute', () => {
     const fn = getShapePath('cylinder')!;
-    const sa = 'fill="#dff5e5" stroke="#000000" stroke-width="2"';
-    const out = fn(100, 80, sa, blankNode({ style: { border_color: '#000000' } as any }));
+    // 保持真实调用场景：sa 由 styleAttrs(n.style) 生成，与传入的 style 一致
+    const style = { fill_color: '#dff5e5', border_color: '#000000', border_width: 'wide' } as any;
+    const out = fn(100, 80, styleAttrs(style), blankNode({ style }));
     const body = out.split('\n').find((line) => line.includes('<rect'))!;
     // 每个属性名只能出现一次，避免浏览器报 Attribute stroke redefined
     expect(body).toMatch(/stroke="none"/);

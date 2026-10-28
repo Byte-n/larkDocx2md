@@ -70,7 +70,15 @@ describe('MdSerializer', () => {
       const node: MdBlockNode = { type: 'bullet', text: [text('parent')], children: [child] };
       const result = s.serialize(node);
       expect(result).toContain('- parent');
-      expect(result).toContain('\t- child');
+      expect(result).toContain('  - child');
+    });
+
+    it('keeps nested code fence valid under a bullet (2-space indent, no tab)', () => {
+      const child: MdBlockNode = { type: 'codeBlock', lang: 'python', content: 'print(1)' };
+      const node: MdBlockNode = { type: 'bullet', text: [text('parent')], children: [child] };
+      const result = s.serialize(node);
+      expect(result).toContain('  ```python');
+      expect(result).not.toMatch(/\t/);
     });
   });
 

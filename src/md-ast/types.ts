@@ -40,4 +40,6 @@ export type MdInlineNode =
   | { type: 'link'; url: string; children: MdInlineNode[] }
   | { type: 'mentionUser'; userId: string }
   | { type: 'mentionDoc'; title: string; url: string }
-  | { type: 'equation'; content: string; inline: boolean };
+  | { type: 'equation'; content: string; inline: boolean }
+  | { type: 'image'; alt: string; src: string }
+  | { type: 'whiteboard'; token: string };

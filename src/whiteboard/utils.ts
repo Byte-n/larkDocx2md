@@ -179,6 +179,14 @@ export function styleAttrs (s?: WStyle): string {
   return parts.join(' ');
 }
 
+/** 从 styleAttrs 结果中剥离 stroke 相关属性，便于再单独指定 stroke */
+export function withoutStrokeAttrs (sa: string): string {
+  return sa
+    .replace(/\bstroke(?:-width|-opacity|-dasharray)?="[^"]*"/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 export function transformAttr (n: WNode): string {
   const parts: string[] = [];
   if (n.x != null || n.y != null) parts.push(`translate(${r(n.x ?? 0)},${r(n.y ?? 0)})`);

@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import {
-  r, esc, styleAttrs, transformAttr, walkNodes, filterNodes, gWrap, nodeDataAttrs,
+  r, esc, styleAttrs, withoutStrokeAttrs, transformAttr, walkNodes, filterNodes, gWrap, nodeDataAttrs,
   BORDER_WIDTH_MAP, DASH_ARRAY_MAP,
 } from '../../src/whiteboard/utils.js';
 
@@ -75,6 +75,21 @@ describe('styleAttrs', () => {
   it('applies dash array for dashed border', () => {
     expect(styleAttrs({ border_style: 'dash' } as any)).toContain('stroke-dasharray="8,4"');
     expect(styleAttrs({ border_style: 'dot' } as any)).toContain('stroke-dasharray="2,2"');
+  });
+});
+
+describe('withoutStrokeAttrs', () => {
+  it('strips stroke and related attributes while keeping fill', () => {
+    expect(withoutStrokeAttrs('fill="#eee" stroke="#333"')).toBe('fill="#eee"');
+    expect(
+      withoutStrokeAttrs('fill="#dff5e5" stroke="#000" stroke-width="2" stroke-dasharray="8,4"'),
+    ).toBe('fill="#dff5e5"');
+  });
+
+  it('keeps fill-opacity', () => {
+    expect(withoutStrokeAttrs('fill="#f00" fill-opacity="0.5" stroke="#333"')).toBe(
+      'fill="#f00" fill-opacity="0.5"',
+    );
   });
 });
 

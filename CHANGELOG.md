@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2
+
+### Fixed
+
+- **表格单元格多块内容保留**：单元格展平不再丢弃 bullet/ordered/todo/quote/callout/code/image 等块类型，块间以 `<br>` 分隔，复杂单元格内容完整导出
+- **内嵌电子表格读取**：docx 内嵌电子表格（无 sheetId 后缀）读取所有非隐藏工作表，不再输出空表
+- **单元格内画板导出**：画板保留 whiteboard 行内节点，由 transformer 生成 SVG 后回填，消除图片死链
+- **列表子块缩进修正**：子块缩进由 tab 改为 2 空格，避免嵌套代码块围栏失效
+
 ## 0.8.1
 
 ### Fixed

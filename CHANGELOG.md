@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+
+### Features
+
+- **`--version` 参数**：CLI 新增 `-V, --version` 入口，构建时通过 tsdown 插件注入 package.json 版本号，运行时打印当前 CLI 版本
+
 ## 0.8.3
 
 ### Fixed

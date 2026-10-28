@@ -1,10 +1,12 @@
 import { Command } from 'commander';
 import { handleDownloadCommand, handleGetTitlesCommand } from './handlers.js';
 import type { DownloadRawOptions, GetTitlesRawOptions } from './options.js';
+import { CLI_VERSION } from './version.js';
 
 export function createProgram (): Command {
   const program = new Command();
   program.name('larkDocx2md').description('Download Lark/Feishu documents to markdown');
+  program.version(CLI_VERSION, '-V, --version', 'Print the CLI version and exit');
 
   program
     .command('download')

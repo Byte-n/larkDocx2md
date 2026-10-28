@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.3
+
+### Fixed
+
+- **画板圆柱体 SVG 重复属性**：`cylinder` / `flow_chart_cylinder` / `data_base` 形状侧壁矩形不再输出重复的 stroke 属性，消除浏览器 "Attribute stroke redefined" 告警与侧壁意外描边
+
 ## 0.8.2
 
 ### Fixed

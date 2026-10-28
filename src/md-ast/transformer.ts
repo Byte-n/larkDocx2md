@@ -8,7 +8,7 @@ import { filterNodes } from '../whiteboard/utils.js';
 import { cellToMd, expandMerges, trimTrailingEmpty, columnIndexToLetter } from '../sheet/index.js';
 import type { ResolvedSheet } from '../sheet/index.js';
 import { createLogger } from '../lib/logger.js';
-import type { MdBlockNode } from './types.js';
+import type { MdBlockNode, MdInlineNode } from './types.js';
 
 const logger = createLogger('transformer');
 
@@ -245,7 +245,9 @@ export class MdTransformer {
       try {
       const info = await this.client.getSpreadsheetInfo(spreadsheetToken);
       const list = await this.client.listSheets(spreadsheetToken);
-      const sheetsToProcess = this.sourceType === 'sheet' && !sheetId
+      // docx 内嵌的 sheet 块 token 不携带 sheetId 后缀：取所有非隐藏工作表；
+      // 否则 sheet 文档按 URL 中的 sheetId 过滤，单 sheet 精确匹配。
+      const sheetsToProcess = !sheetId
         ? list
         : list.filter(s => s.sheet_id === sheetId);
       const resolved: ResolvedSheet[] = [];
@@ -329,6 +331,13 @@ function collectTokens (node: MdBlockNode) {
         break;
       }
     }
+    // 行内节点中的 image / whiteboard（如 docx 表格单元格内展平后的内容）同样需要解析
+    for (const arr of inlineArraysOf(n)) {
+      for (const inline of arr) {
+        if (inline.type === 'image') imageTokens.push(inline.src);
+        if (inline.type === 'whiteboard') whiteboardTokens.push(inline.token);
+      }
+    }
   });
   return { imageTokens, whiteboardTokens, sheetRefs };
 }
@@ -345,6 +354,29 @@ function replaceInAst (
       (node as MdBlockNode & { src: string }).src = newSrc;
     }
     return;
+  }
+
+  // 行内 image / whiteboard（如 docx 表格单元格内展平后的内容）替换解析结果
+  for (const arr of inlineArraysOf(node)) {
+    for (let i = 0; i < arr.length; i++) {
+      const inline = arr[i]!;
+      if (inline.type === 'image') {
+        const newSrc = imageMap.get(inline.src);
+        if (newSrc) inline.src = newSrc;
+        continue;
+      }
+      if (inline.type === 'whiteboard') {
+        const replacement = whiteboardMap.get(inline.token);
+        if (!replacement) continue;
+        if (replacement.type === 'image') {
+          // svg / base64 格式产出 image 块，可降为行内 image
+          arr[i] = { type: 'image', alt: replacement.alt, src: replacement.src };
+        } else {
+          // inline-svg / yaml 格式产出 html / codeBlock，无行内等价物，降为占位文本
+          arr[i] = { type: 'text', content: `[画板 ${inline.token}]` };
+        }
+      }
+    }
   }
 
   for (const arr of blockChildArrays(node)) {
@@ -382,6 +414,31 @@ function traverseBlockAst (node: MdBlockNode, visitor: (node: MdBlockNode) => vo
       traverseBlockAst(child, visitor);
     }
   }
+}
+
+/**
+ * 返回节点持有的行内节点数组（可变引用），供遍历/替换使用。
+ * 覆盖标题/段落的 children、列表与待办的 text、表格单元格的 content。
+ */
+function inlineArraysOf (node: MdBlockNode): MdInlineNode[][] {
+  const arrs: MdInlineNode[][] = [];
+  switch (node.type) {
+    case 'heading':
+    case 'paragraph':
+      arrs.push(node.children);
+      break;
+    case 'bullet':
+    case 'ordered':
+    case 'todo':
+      arrs.push(node.text);
+      break;
+    case 'table':
+      for (const row of node.rows) {
+        for (const cell of row.cells) arrs.push(cell.content);
+      }
+      break;
+  }
+  return arrs;
 }
 
 /**

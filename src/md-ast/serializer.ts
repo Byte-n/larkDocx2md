@@ -71,6 +71,10 @@ function serializeInlineNode (node: MdInlineNode): string {
       return `[${node.title}](${node.url})`;
     case 'equation':
       return node.inline ? `$${node.content}$` : `$$${node.content}$$`;
+    case 'image':
+      return `![${node.alt}](${node.src})`;
+    case 'whiteboard':
+      return `![画板-${node.token}](${node.token}.svg)`;
     default:
       return '';
   }
@@ -113,9 +117,10 @@ const bulletSerializer: NodeSerializer = {
     for (const child of node.children) {
       const childStr = ctx.serialize(child);
       if (childStr) {
+        // 2 空格缩进：tab（4 列）会让嵌套代码块围栏失效
         s += childStr.split('\n').map((line, i, arr) => {
           if (!line && i === arr.length - 1) return '';
-          return `\t${line}`;
+          return `  ${line}`;
         }).join('\n');
       }
     }
@@ -131,9 +136,10 @@ const orderedSerializer: NodeSerializer = {
     for (const child of node.children) {
       const childStr = ctx.serialize(child);
       if (childStr) {
+        // 2 空格缩进：tab（4 列）会让嵌套代码块围栏失效
         s += childStr.split('\n').map((line, i, arr) => {
           if (!line && i === arr.length - 1) return '';
-          return `\t${line}`;
+          return `  ${line}`;
         }).join('\n');
       }
     }

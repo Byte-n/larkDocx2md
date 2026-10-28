@@ -459,6 +459,48 @@ describe('Parser - end-to-end', () => {
     expect(table.rows[1]!.cells).toHaveLength(2);
   });
 
+  it('flattens bullet/image blocks inside table cells (no content dropped)', () => {
+    const blocks: DocxBlock[] = [
+      b({ block_id: 'root', block_type: 1, children: ['tbl'] }),
+      b({
+        block_id: 'tbl',
+        block_type: 31,
+        parent_id: 'root',
+        table: {
+          property: { column_size: 2, row_size: 1 },
+          cells: ['c0', 'c1'],
+        } as any,
+      }),
+      b({ block_id: 'c0', block_type: 32, parent_id: 'tbl', children: ['bl1', 'ep', 'bl2', 'bd'] }),
+      b({ block_id: 'bl1', block_type: 12, parent_id: 'c0', children: ['bl1c'], bullet: { elements: [textRun('支持关闭的订单状态')] } }),
+      b({ block_id: 'bl1c', block_type: 2, parent_id: 'bl1', text: { elements: [textRun('推送中时不可关闭', { bold: true })] } }),
+      b({ block_id: 'ep', block_type: 2, parent_id: 'c0', text: { elements: [textRun('')] } }),
+      b({ block_id: 'bl2', block_type: 12, parent_id: 'c0', bullet: { elements: [textRun('已关闭订单不支持扭转')] } }),
+      b({ block_id: 'bd', block_type: 2, parent_id: 'c0', text: { elements: [textRun('10月版本更新', { bold: true })] } }),
+      b({ block_id: 'c1', block_type: 32, parent_id: 'tbl', children: ['t1', 'img', 't2'] }),
+      b({ block_id: 't1', block_type: 2, parent_id: 'c1', text: { elements: [textRun('弹窗截图')] } }),
+      b({ block_id: 'img', block_type: 27, parent_id: 'c1', image: { token: 'IMG_TOK' } }),
+      b({ block_id: 't2', block_type: 2, parent_id: 'c1', text: { elements: [textRun('业务场景')] } }),
+    ];
+    const ast = buildParser().parse(doc, blocks);
+    if (ast.type !== 'page') throw new Error();
+    const table = ast.children[0];
+    if (table?.type !== 'table') throw new Error();
+
+    const serializer = new MdSerializer();
+    registerBuiltinSerializers(serializer);
+    const md = serializer.serialize(ast, { sourceType: 'docx' });
+
+    // bullet 内容被保留并以 <br> 分隔；空段落被折叠；嵌套子块不丢失
+    expect(md).toContain('- 支持关闭的订单状态');
+    expect(md).toContain('<br>');
+    expect(md).toContain('**推送中时不可关闭**');
+    expect(md).toContain('- 已关闭订单不支持扭转');
+    expect(md).toContain('**10月版本更新**');
+    // image 被保留为行内图片
+    expect(md).toContain('![图片-IMG_TOK](IMG_TOK)');
+  });
+
   it('falls back to root-level blocks when documentId is missing', () => {
     const blocks: DocxBlock[] = [
       b({ block_id: 'p1', block_type: 2, text: { elements: [textRun('orphan')] } }),

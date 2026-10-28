@@ -97,6 +97,40 @@ describe('MdTransformer - image resolution (online)', () => {
     const img = (ast as any).children[0];
     expect(img.src).toBe('https://cdn/t');
   });
+
+  it('resolves image tokens inside table cell inline content', async () => {
+    const client = mockClient({
+      batchGetTmpDownloadUrl: vi.fn().mockResolvedValue({ TINC: 'https://cdn/cell.png' }),
+    } as any);
+    const tr = new MdTransformer(client, makeOpts({ imageMode: 'online' }));
+
+    const ast: MdBlockNode = {
+      type: 'page',
+      title: [],
+      children: [
+        {
+          type: 'table',
+          rows: [
+            {
+              cells: [
+                {
+                  content: [
+                    { type: 'text', content: 'before' },
+                    { type: 'text', content: '\n' },
+                    { type: 'image', alt: 'pic', src: 'TINC' },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await tr.transform(ast);
+    const table = (ast as any).children[0];
+    const img = table.rows[0].cells[0].content[2];
+    expect(img.src).toBe('https://cdn/cell.png');
+  });
 });
 
 describe('MdTransformer - image resolution (local)', () => {
@@ -384,6 +418,32 @@ describe('MdTransformer - sheet resolution', () => {
     const resolved = (ast as any).children[0];
     expect(resolved.sheets).toHaveLength(2);
   });
+
+  it('docx source type also includes all non-hidden sheets when embedded sheet omits sheetId', async () => {
+    const getSheetMeta = vi.fn().mockResolvedValue({
+      grid_properties: { row_count: 1, column_count: 1 },
+    });
+    const readSheetValues = vi.fn().mockResolvedValue([['x']]);
+    const client = mockClient({
+      getSpreadsheetInfo: vi.fn().mockResolvedValue({ title: 'S' }),
+      listSheets: vi.fn().mockResolvedValue([
+        { sheet_id: 's1', title: 'A', resource_type: 'sheet' },
+        { sheet_id: 's2', title: 'B', resource_type: 'sheet', hidden: true },
+      ]),
+      getSheetMeta,
+      readSheetValues,
+    } as any);
+    const tr = new MdTransformer(client, makeOpts(), 'docx');
+    // docx 内嵌 sheet 块 token 不携带 sheetId 后缀，应读取所有非隐藏工作表而非输出空表
+    const ast: MdBlockNode = {
+      type: 'page', title: [],
+      children: [{ type: 'sheet', token: 'EMBTOK' }],
+    };
+    await tr.transform(ast);
+    const resolved = (ast as any).children[0];
+    expect(resolved.sheets).toHaveLength(1);
+    expect(resolved.sheets[0].title).toBe('A');
+  });
 });
 
 // ─── token collection / deep traversal ─────────────────────────────────
@@ -408,6 +468,39 @@ describe('MdTransformer - deep AST traversal', () => {
     };
     await tr.transform(ast);
     expect(imageNode.src).toBe('https://cdn/nested');
+  });
+
+  it('resolves whiteboard token inside table cell inline content', async () => {
+    const client = mockClient({
+      getWhiteboardNodes: vi.fn().mockResolvedValue([]),
+    } as any);
+    const tr = new MdTransformer(client, makeOpts({ wbFormat: 'svg' }));
+
+    const ast: MdBlockNode = {
+      type: 'page', title: [],
+      children: [
+        {
+          type: 'table',
+          rows: [
+            {
+              cells: [
+                {
+                  content: [
+                    { type: 'text', content: '画板：' },
+                    { type: 'whiteboard', token: 'WBTOK' } as any,
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+    await tr.transform(ast);
+    const content = (ast as any).children[0].rows[0].cells[0].content;
+    // 画板 token 被收集，生成的 SVG 路径回填到行内 image
+    expect(content[1].type).toBe('image');
+    expect(content[1].src).toBe(path.join('static', 'WBTOK.svg'));
   });
 
   it('does nothing when AST has no image/whiteboard/sheet', async () => {

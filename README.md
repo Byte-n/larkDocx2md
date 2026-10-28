@@ -36,6 +36,12 @@ npx -y lark-docx2md@latest download --url <url>
 
 > **凭证优先级**：命令行参数 > 环境变量
 
+查看 CLI 版本：
+
+```bash
+npx -y lark-docx2md@latest --version
+```
+
 ## 参数
 
 | 参数                       | 说明                                        | 环境变量                         | 默认值                   |
